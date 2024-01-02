@@ -4,3 +4,4 @@ imageio
 gdown
 tensorflow
 numpy
+openai

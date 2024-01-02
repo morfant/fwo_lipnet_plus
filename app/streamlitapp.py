@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf 
 from utils import load_data, num_to_char
 from modelutil import load_model
+from chatgpt import ask_chatgpt
 
 # Set the layout to the streamlit app as wide 
 st.set_page_config(layout='wide')
@@ -63,3 +64,15 @@ if options:
         converted_prediction = tf.strings.reduce_join(num_to_char(decoder)).numpy().decode('utf-8')
         st.text(converted_prediction)
         
+
+    if converted_prediction != None:
+        # ChatGPT에게 요청할 텍스트
+        user_input = "{}을 한국어 발음으로 변경해줄래".format(converted_prediction)
+
+        # ChatGPT에게 요청 전달
+        chatgpt_response = ask_chatgpt(user_input)
+
+        # ChatGPT의 응답 출력
+        st.text("User:", user_input)
+        st.text("ChatGPT:", chatgpt_response)
+
