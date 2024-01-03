@@ -11,14 +11,19 @@ num_to_char = tf.keras.layers.StringLookup(
 )
 
 def load_video(path:str) -> List[float]: 
-    # print("load_video()")
-    # print(path)
+    print("load_video()")
+    print(path)
     cap = cv2.VideoCapture(path)
     frames = []
-    for _ in range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))): 
+    print(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    n = min(75, n)
+    # for _ in range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))): 
+    for _ in range(n): 
         ret, frame = cap.read()
         frame = tf.image.rgb_to_grayscale(frame)
-        frames.append(frame[190:236,80:220,:])
+        # frames.append(frame[190:236,80:220,:])
+        frames.append(frame[180:226,140:280,:])
     cap.release()
     
     mean = tf.math.reduce_mean(frames)
@@ -38,18 +43,20 @@ def load_alignments(path:str) -> List[str]:
     return char_to_num(tf.reshape(tf.strings.unicode_split(tokens, input_encoding='UTF-8'), (-1)))[1:]
 
 def load_data(path: str): 
-    # print("load_data()")
+    print("load_data()")
     path = bytes.decode(path.numpy())
-    file_name = path.split('/')[-1].split('.')[0]
+    # file_name = path.split('/')[-1].split('.')[0]
+    file_name = path.split('/')[-1]
+    print(file_name)
 
     # File name splitting for windows
     # file_name = path.split('\\')[-1].split('.')[0]
 
-    video_path = os.path.join('..','data','s1',f'{file_name}.mpg')
-    alignment_path = os.path.join('..','data','alignments','s1',f'{file_name}.align')
-    # print(video_path)
-    # print(alignment_path)
+    # video_path = os.path.join('..','data','s1',f'{file_name}.mpg')
+    video_path = os.path.join('..','data','s1',f'{file_name}')
+    # alignment_path = os.path.join('..','data','alignments','s1',f'{file_name}.align')
     frames = load_video(video_path) 
-    alignments = load_alignments(alignment_path)
+    # alignments = load_alignments(alignment_path)
     
-    return frames, alignments
+    # return frames, alignments
+    return frames

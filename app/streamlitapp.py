@@ -21,7 +21,9 @@ with st.sidebar:
 st.title('LipNet Full Stack App') 
 # Generating a list of options or videos 
 options = os.listdir(os.path.join('..', 'data', 's1'))
-selected_video = st.selectbox('Choose video', options)
+sorted_options = sorted(options)
+# st.text(sorted_options)
+selected_video = st.selectbox('Choose video', sorted_options)
 st.text(selected_video )
 
 # Generate two columns 
@@ -34,7 +36,8 @@ if options:
         st.info('The video below displays the converted video in mp4 format')
         file_path = os.path.join('..','data','s1', selected_video)
         st.text(file_path)
-        os.system(f'ffmpeg -i {file_path} -vcodec libx264 test_video.mp4 -y')
+        if file_path.split('.')[1] != 'mp4':
+            os.system(f'ffmpeg -i {file_path} -vcodec libx264 test_video.mp4 -y')
 
         # Rendering inside of the app
         video = open('test_video.mp4', 'rb') 
@@ -44,11 +47,11 @@ if options:
 
     with col2: 
         st.info('This is all the machine learning model sees when making a prediction')
-        video, annotations = load_data(tf.convert_to_tensor(file_path))
-        # st.text(video.numpy().dtype)
-        # st.text(video.numpy().shape)
-        # st.text(video.numpy().min())
-        # st.text(video.numpy().max())
+        video = load_data(tf.convert_to_tensor(file_path))
+        st.text(video.numpy().dtype)
+        st.text(video.numpy().shape)
+        st.text(video.numpy().min())
+        st.text(video.numpy().max())
         imageio.mimsave('animation.gif', (video * 255).numpy().astype('uint8').squeeze(), fps=10)
         st.image('animation.gif', width=400) 
 
@@ -67,12 +70,12 @@ if options:
 
     if converted_prediction != None:
         # ChatGPT에게 요청할 텍스트
-        user_input = "{}을 한국어 발음으로 변경해줄래".format(converted_prediction)
+        user_input = "\"{}\"의 한국어 발음 결과만 보여줘".format(converted_prediction)
 
         # ChatGPT에게 요청 전달
         chatgpt_response = ask_chatgpt(user_input)
 
         # ChatGPT의 응답 출력
-        st.text("User:", user_input)
-        st.text("ChatGPT:", chatgpt_response)
+        st.text("User: " +  user_input)
+        st.text("ChatGPT: " + chatgpt_response)
 
