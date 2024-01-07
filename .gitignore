@@ -163,3 +163,5 @@ cython_debug/
 .mpg
 .mp4
 .gif
+.wav
+.mp3
