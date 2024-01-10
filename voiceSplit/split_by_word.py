@@ -31,7 +31,9 @@ def transcribe_audio_with_timing(api_key_path, audio_file_path):
 
     # 각 단어의 시작 및 종료 시간 출력
     for result in response.results:
+        print(result)
         for word_info in result.alternatives[0].words:
+            # print(word_info)
             word = word_info.word
             start_time = word_info.start_time.total_seconds()
             end_time = word_info.end_time.total_seconds()

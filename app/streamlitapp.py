@@ -52,8 +52,8 @@ if options:
         st.text(video.numpy().shape)
         st.text(video.numpy().min())
         st.text(video.numpy().max())
-        imageio.mimsave('animation.gif', (video * 255).numpy().astype('uint8').squeeze(), fps=10)
-        st.image('animation.gif', width=400) 
+        imageio.mimsave('./animation.gif', (video * 255).numpy().astype('uint8').squeeze(), fps=10)
+        st.image('./animation.gif', width=400) 
 
         st.info('This is the output of the machine learning model as tokens')
         model = load_model()
