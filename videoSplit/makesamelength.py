@@ -1,9 +1,6 @@
 import os
 import cv2
 
-from moviepy.video.io.VideoFileClip import VideoFileClip
-from moviepy.video.compositing.concatenate import concatenate_videoclips
-
 def get_files_in_folder(folder_path):
     # 폴더 내 모든 파일의 리스트를 가져옴
     files = os.listdir(folder_path)
@@ -13,54 +10,39 @@ def get_files_in_folder(folder_path):
 
     return file_list
 
-def find_longest_video(folder_path):
-    # 폴더 내 모든 파일의 리스트를 가져옴
-    files = os.listdir(folder_path)
+def get_frame_count(video_path):
+    # 비디오 파일 열기
+    cap = cv2.VideoCapture(video_path)
 
-    # 비디오 파일만 추려내어 리스트에 저장
-    video_files = [file for file in files if file.lower().endswith(('.mp4', '.avi', '.mkv', '.mov'))]
-
-    if not video_files:
-        print("폴더에 비디오 파일이 없습니다.")
+    # 비디오 파일이 정상적으로 열리는지 확인
+    if not cap.isOpened():
+        print(f"Error: Couldn't open the video file {video_path}.")
         return None
 
-    longest_duration = 0
-    longest_video = None
+    # 프레임 수 확인
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    for video_file in video_files:
-        video_path = os.path.join(folder_path, video_file)
-        video_clip = VideoFileClip(video_path)
-        video_duration = video_clip.duration
+    # 비디오 파일 닫기
+    cap.release()
 
-        if video_duration > longest_duration:
-            longest_duration = video_duration
-            longest_video = video_file
+    return frame_count
 
-        video_clip.close()
-
-    return longest_video, longest_duration
-
-
-def find_short_videos(folder_path, threshold_frame_length):
+def find_shorter_videos(folder_path, threshold_frame_length):
     short_videos = []
 
-    # 폴더 내 모든 파일의 리스트를 가져옴
-    files = os.listdir(folder_path)
+    # 지정된 폴더에서 모든 비디오 파일 가져오기
+    video_files = [f for f in os.listdir(folder_path) if f.endswith(('.mp4'))]
 
-    # 비디오 파일만 추려내어 리스트에 저장
-    video_files = [file for file in files if file.lower().endswith(('.mp4', '.avi', '.mkv', '.mov'))]
-
+    # 비디오 파일들에 대한 프레임 수 확인 및 출력
     for video_file in video_files:
         video_path = os.path.join(folder_path, video_file)
-        video_clip = VideoFileClip(video_path)
+        frame_count = get_frame_count(video_path)
 
-        # 현재 영상의 프레임 길이
-        current_frame_length = video_clip.fps * video_clip.duration
+        if frame_count is not None:
+            print(f"Video: {video_file}, Frame Count: {frame_count}")
 
-        if current_frame_length < threshold_frame_length:
-            short_videos.append((video_file, current_frame_length, threshold_frame_length - current_frame_length))
-
-        video_clip.close()
+            if frame_count < threshold_frame_length:
+                short_videos.append((video_file, frame_count, threshold_frame_length - frame_count))
 
     return short_videos 
 
@@ -103,7 +85,7 @@ def append_frame(video_path, src_frame, nframe, output_path):
         out.write(frame)
 
     # 뒤쪽에 프레임 덧붙이기
-    for _ in range(nf):
+    for _ in range(nframe - nf):
         out.write(src_frame)
 
     # 비디오 파일과 VideoWriter 객체 닫기
@@ -148,7 +130,7 @@ if __name__ == "__main__":
     threshold_frame_length = 100 
 
     # 특정 프레임 길이보다 짧은 비디오 찾기
-    short_videos = find_short_videos(TARGET_PATH, threshold_frame_length)
+    short_videos = find_shorter_videos(TARGET_PATH, threshold_frame_length)
 
     if short_videos:
         print(f"프레임 길이가 {threshold_frame_length}보다 짧은 비디오:")
