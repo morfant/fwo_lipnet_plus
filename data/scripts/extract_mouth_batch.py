@@ -21,9 +21,9 @@ import numpy as np
 
 SOURCE_PATH = sys.argv[1]
 SOURCE_EXTS = sys.argv[2]
-TARGET_PATH = sys.argv[3]
+# TARGET_PATH = sys.argv[3]
 
-FACE_PREDICTOR_PATH = sys.argv[4]
+FACE_PREDICTOR_PATH = sys.argv[3]
 
 def mkdir_p(path):
     try:
@@ -46,12 +46,16 @@ for filepath in find_files(SOURCE_PATH, SOURCE_EXTS):
     video = Video(vtype='face', face_predictor_path=FACE_PREDICTOR_PATH).from_video(filepath)
 
     filepath_wo_ext = os.path.splitext(filepath)[0]
-    target_dir = os.path.join(TARGET_PATH, filepath_wo_ext)
+    filename = filepath_wo_ext.split('/')[-1]
+    # print(filename)
+    target_dir = os.path.join(SOURCE_PATH, 'cropped', filename)
+    # print(target_dir)
     mkdir_p(target_dir)
 
     i = 0
     for frame in video.mouth:
         frame = (frame * 255).astype(np.uint8)
-        print(frame)
+        # print(frame)
         io.imsave(os.path.join(target_dir, "mouth_{0:03d}.png".format(i)), frame)
         i += 1
+    print ("Saved at: {}".format(target_dir))
