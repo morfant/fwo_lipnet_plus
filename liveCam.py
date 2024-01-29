@@ -10,13 +10,37 @@ from matplotlib import pyplot as plt
 
 
 
-
+frame_count = 0
 REC_SEC = 3
 REC_FILE = './camout/output.mp4'
 FACE_PREDICTOR_PATH = './predictors/shape_predictor_68_face_landmarks.dat'
 
+def count_frames(video_path):
+    # VideoCapture 객체 생성
+    cap = cv2.VideoCapture(video_path)
+
+    # 프레임 수 확인
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # VideoCapture 객체 해제
+    cap.release()
+
+    return frame_count
+
+def display_text(frame_on, text="text..", px=10, py=20, r=255, g=0, b=0):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.8 
+    font_thickness = 2
+    text_position = (px, py)
+    text_color = (b, g, r)  # BGR format
+    cv2.putText(frame_on, text, text_position, font, font_scale, text_color, font_thickness)
+
+
 def load_frames_from_video(filepath:str):
     print(f'load_frames_from_video() path: {filepath}')
+
+    fc = count_frames(filepath)
+    print(f'load_frames_from_video frame count of input video: {fc}')
 
     # print ("Processing: {}".format(filepath))
     video = Video(vtype='face', face_predictor_path=FACE_PREDICTOR_PATH).from_video(filepath)    
@@ -35,11 +59,14 @@ def load_frames_from_video(filepath:str):
             frames.append(frame)
         else:
             print("load_frames_from_video() path" + path)
-    	
+
     mean = tf.math.reduce_mean(frames)
     std = tf.math.reduce_std(tf.cast(frames, tf.float32))
     # print(f'mean: {mean} - std: {std}')
-    return tf.cast((frames - mean), tf.float32) / std # 각 데이터에서 평균을 뺀 다음, 표준편차로 나눈다 --> 데이터 정규화
+    rslt = tf.cast((frames - mean), tf.float32) / std
+    error_face = video.face_detect_failed
+    error_mouth = video.mouth_detection_chopped
+    return rslt, error_face, error_mouth # 각 데이터에서 평균을 뺀 다음, 표준편차로 나눈다 --> 데이터 정규화
 
 
 
@@ -82,6 +109,13 @@ while True:
     key = cv2.waitKey(1) & 0xFF
     if key == ord('r'):
         if not recording:
+            # 이전에 녹화된 파일 삭제
+            # try:
+            #     os.remove(REC_FILE)
+            #     print(f'{REC_FILE} 파일이 삭제되었습니다.')
+            # except OSError as e:
+            #     print(f'파일 삭제 오류: {e.filename} - {e.strerror}')
+
             # 3초 카운트 다운 표시
             for countdown in range(3, 0, -1):
                 text = f'{countdown}'
@@ -104,23 +138,46 @@ while True:
 
     # 녹화 중일 때
     if recording:
-        # 3초가 지나면 녹화 종료
-        if (cv2.getTickCount() - start_time) / cv2.getTickFrequency() > REC_SEC:
-            print("3초 녹화 완료")
+        # 75frame이 채워지면 녹화 종료
+        if frame_count >= 75:
+
+            print(f'{frame_count} frame 녹화 완료')
             out.release()
+            out = None
+            frame_count = 0
             recording = False
+
             if os.path.exists(REC_FILE):
-                print("HELLO!!!")
-                frames = load_frames_from_video(REC_FILE)
-                plt.imshow(frames[36]) # frames of video (0 ~ 74)
-                plt.pause(1)
-                plt.draw()
-                imageio.mimsave('./camout/animation.gif', (frames * 255).numpy().astype('uint8').squeeze(), fps=fps)
+                calc_frames = []
+                print(f'load_frames_from_video: {REC_FILE}')
+                calc_frames, error_face, error_mouth = load_frames_from_video(REC_FILE)
+                # print(f'error_f: {error_face} / error_m: {error_mouth}')
+
+                if len(calc_frames) == 75:
+
+                    # 3 x 2 배열 
+                    fig, axes = plt.subplots(3, 2, figsize=(5, 3))
+
+                    # 각 프레임을 순회하며 표시
+                    for i in range(3):
+                        for j in range(2):
+                            idx = i * 2 + j
+                            axes[i, j].imshow(calc_frames[idx * 12, :, :, 0])  # cmap은 흑백 이미지의 경우 'gray'를 사용
+                            axes[i, j].axis('on')  # 이미지의 축을 숨김
+                            axes[i, j].set_title(f'Frame {idx * 12 + 1}')
+
+                    plt.pause(0.5)
+                    plt.draw()
+
+                    # imageio.mimsave('./camout/animation.gif', (frames * 255).numpy().astype('uint8').squeeze(), fps=fps)
 
             
 
         # 영상 저장
-        out.write(frame)
+        if out != None:
+            out.write(frame)
+            frame_count += 1
+            # print(f'Recorded frame count: {frame_count}')
 
         # 영상에 녹화 안되는 부분
         # 텍스트 추가 (현재 녹화 중임을 알려주는 메시지)
@@ -136,7 +193,8 @@ while True:
         font_scale = 1 
         elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
         MAX_DOT_NUM = 36
-        dots = min(int(elapsed_time * MAX_DOT_NUM / REC_SEC), MAX_DOT_NUM)
+        # dots = min(int(elapsed_time * MAX_DOT_NUM / REC_SEC), MAX_DOT_NUM)
+        dots = min(int(frame_count * MAX_DOT_NUM / 75), MAX_DOT_NUM)
         progress_text = '.' * dots
         cv2.putText(frame, progress_text, (0, 40), font, font_scale, text_color, font_thickness)
 
@@ -148,10 +206,8 @@ while True:
         cv2.rectangle(frame, rect_start_point, rect_end_point, rect_color, rect_thickness)
 
 
-
-
     # 영상 재생
-    cv2.imshow('Camera Feed', cv2.resize(frame, (2 * width, 2 * height))) # 화면이 보이는 비율, 녹화와 관계 없음
+    cv2.imshow('Camera Feed', cv2.resize(frame, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
 
     # 'esc' 키를 누르면 종료합니다.
     if key == 27:
