@@ -11,9 +11,8 @@ def parse_align_file(align_path):
     align_data = [line.strip().split()[2] for line in lines if 'sil' not in line]
     return set(align_data)
 
-def select_non_overlapping_videos(video_folder, align_folder, num_videos):
-    video_files = [f for f in os.listdir(video_folder) if f.endswith('.mpg')]
-    # random.shuffle(video_files)
+def select_non_overlapping_videos(align_folder, num_videos):
+    print(align_folder)
     align_files = [f for f in os.listdir(align_folder) if f.endswith('.align')]
 
     selected_videos = []
@@ -131,9 +130,28 @@ def rename_folders(base_folder_path, suffix='_150'):
             print(f"폴더 이름 변경: {folder} -> {new_folder_name}")
 
 
+def get_folders_with_prefix_and_suffix(root_path, prefix, suffix):
+    matching_folders = []
+
+    # 디렉토리의 모든 항목을 확인
+    for folder_name in os.listdir(root_path):
+        folder_path = os.path.join(root_path, folder_name)
+
+        # 디렉토리인지 확인
+        if os.path.isdir(folder_path):
+            # 특정 문자로 시작하고 특정 문자로 끝나지 않는 경우를 확인
+            if folder_name.startswith("s") and folder_name[1:].isdigit() and not folder_name.endswith(suffix):
+                matching_folders.append(folder_path)
+
+    return matching_folders
+
 
 # 여러 폴더에 대해 작업을 반복
-num_data = 100
+num_data = 500
+target_path = '../data/'
+
+
+'''
 folders_to_process = [
     # 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's9', 's10',
     # 's11', 's12', 's13', 's14', 's15', 's16', 's17', 's19', 's20',
@@ -141,12 +159,17 @@ folders_to_process = [
     # 's31', 's32', 's33', 's34'
     's18', 's28'
     ] 
-for folder_name in folders_to_process:
+'''
+
+folders_to_process = get_folders_with_prefix_and_suffix(target_path, 's', '_')
+
+for folder_path in folders_to_process:
+    folder_name = folder_path.split('/')[-1]
     video_folder = '../data/' + folder_name
     align_folder = '../data/alignments/'
-    new_folder_path = '../data/100_each/'
+    new_folder_path = '../data/500_each/'
 
-    selected_videos = select_non_overlapping_videos(video_folder, align_folder + folder_name, num_data)
+    selected_videos = select_non_overlapping_videos(align_folder + folder_name, num_data)
 
     print("-" * 50)
     print(f'{len(selected_videos)} videos selected from {video_folder}.')
@@ -155,6 +178,6 @@ for folder_name in folders_to_process:
     copy_files_to_folder(selected_videos, video_folder, new_folder_path + folder_name)
     print(f'done.')
 
-    print("making matching alignments folder ")
-    create_aligned_folder(new_folder_path + folder_name, align_folder + folder_name, new_folder_path + 'alignments/' + folder_name)
+    # print("making matching alignments folder ")
+    # create_aligned_folder(new_folder_path + folder_name, align_folder + folder_name, new_folder_path + 'alignments/' + folder_name)
     print(f'done.')
