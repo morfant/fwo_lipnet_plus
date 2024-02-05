@@ -8,7 +8,10 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import pyplot as plt
 from datetime import datetime
+from pythonosc import udp_client
 
+OSC_ADDR = "127.0.0.1"
+OSC_PORT = 30000
 
 frame_count = 0
 save_interval = 5
@@ -17,6 +20,28 @@ REC_FILE = './camout/output.mp4'
 FACE_PREDICTOR_PATH = './predictors/shape_predictor_68_face_landmarks.dat'
 
 
+def send_osc_message(osc_server_ip, osc_server_port, osc_address, osc_message):
+    """
+    OSC 메시지를 보내는 함수
+
+    Parameters:
+    - osc_server_ip (str): OSC 서버의 IP 주소
+    - osc_server_port (int): OSC 서버의 포트 번호
+    - osc_address (str): OSC 메시지의 주소
+    - osc_message: 전송할 메시지
+
+    Returns:
+    None
+    """
+    # OSC 클라이언트 생성
+    client = udp_client.SimpleUDPClient(osc_server_ip, osc_server_port)
+
+    # OSC 메시지 보내기
+    client.send_message(osc_address, osc_message)
+
+
+# 영상 촬영 중 일정 간격 이미지 저장할 폴더 생성
+# captured_frames_YYMMDD_HHMMSS 의 형태
 def create_output_directory():
 
     # 현재 날짜와 시간을 이용하여 디렉토리 이름 생성
@@ -152,10 +177,11 @@ while True:
 
             # 프레임 이미지 저장할 폴더 생성
             output_directory = create_output_directory()
-            print(output_directory)
+            send_osc_message(OSC_ADDR, OSC_PORT, "/current_directory", output_directory)
+            # print(output_directory)
 
         else:
-            print("녹화 종료")
+            print("녹화 종료") # 녹화 도중 다시 'r'을 눌렀을 때
             recording = False
 
     # 녹화 중일 때
@@ -164,6 +190,11 @@ while True:
         if frame_count >= 75: # 저장은 frame_count가 74일 때까지만 되어야 한다
 
             print(f'{frame_count} frame 녹화 완료')
+
+            # record가 끝나면 현재 시간을 OSC로 전송
+            timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
+            send_osc_message(OSC_ADDR, OSC_PORT, "/record_end", timestamp)
+
             out.release() # 파일 저장
             out = None
             # frame_count = 0
@@ -208,7 +239,7 @@ while True:
 
                 # 이미지 저장
                 cv2.imwrite(image_path, frame)
-                print(f'Frame {frame_count} saved at {image_path}')
+                # print(f'Frame {frame_count} saved at {image_path}')
 
             out.write(frame)
             frame_count += 1
