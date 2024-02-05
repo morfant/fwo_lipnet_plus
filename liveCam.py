@@ -7,13 +7,27 @@ from skimage import io
 import numpy as np
 import tensorflow as tf
 from matplotlib import pyplot as plt
-
+from datetime import datetime
 
 
 frame_count = 0
+save_interval = 5
 REC_SEC = 3
 REC_FILE = './camout/output.mp4'
 FACE_PREDICTOR_PATH = './predictors/shape_predictor_68_face_landmarks.dat'
+
+
+def create_output_directory():
+
+    # 현재 날짜와 시간을 이용하여 디렉토리 이름 생성
+    timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
+    output_directory = os.path.join('archive', f'captured_frames_{timestamp}')
+
+    # 디렉토리 생성
+    os.makedirs(output_directory, exist_ok=True)
+
+    return output_directory
+
 
 def count_frames(video_path):
     # VideoCapture 객체 생성
@@ -73,7 +87,7 @@ def load_frames_from_video(filepath:str):
 
 # ---------------------- MAIN -----------------------
 # 카메라를 연결합니다.
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
 
 # 새로운 해상도 설정
 width = 360
@@ -116,6 +130,9 @@ while True:
             # except OSError as e:
             #     print(f'파일 삭제 오류: {e.filename} - {e.strerror}')
 
+            # frame_count 초기화
+            frame_count = 0
+
             # 3초 카운트 다운 표시
             for countdown in range(3, 0, -1):
                 text = f'{countdown}'
@@ -132,6 +149,11 @@ while True:
             recording = True
             out = cv2.VideoWriter(REC_FILE, fourcc, fps, (width, height))
             start_time = cv2.getTickCount()
+
+            # 프레임 이미지 저장할 폴더 생성
+            output_directory = create_output_directory()
+            print(output_directory)
+
         else:
             print("녹화 종료")
             recording = False
@@ -139,15 +161,15 @@ while True:
     # 녹화 중일 때
     if recording:
         # 75frame이 채워지면 녹화 종료
-        if frame_count >= 75:
+        if frame_count >= 75: # 저장은 frame_count가 74일 때까지만 되어야 한다
 
             print(f'{frame_count} frame 녹화 완료')
-            out.release()
+            out.release() # 파일 저장
             out = None
-            frame_count = 0
+            # frame_count = 0
             recording = False
 
-            if os.path.exists(REC_FILE):
+            if os.path.exists(REC_FILE): # 영상 파일 저장된 것이 확인 되면
                 calc_frames = []
                 print(f'load_frames_from_video: {REC_FILE}')
                 calc_frames, error_face, error_mouth = load_frames_from_video(REC_FILE)
@@ -169,15 +191,29 @@ while True:
                     plt.pause(0.5)
                     plt.draw()
 
-                    # imageio.mimsave('./camout/animation.gif', (frames * 255).numpy().astype('uint8').squeeze(), fps=fps)
+                    # print(calc_frames.shape)
+                    imageio.mimsave('./camout/animation.gif', (calc_frames * 255).numpy().astype('uint8').squeeze(), fps=fps)
 
             
 
         # 영상 저장
-        if out != None:
+        if out != None: # 영상이 저장되고 있다면
+
+            # 일정 간격마다 이미지 저장
+            if frame_count % save_interval == 0:
+
+                # 이미지 파일 경로 설정
+                formatted_number = f"{frame_count:03d}"
+                image_path = os.path.join(output_directory, f'mouth_{formatted_number}.png')
+
+                # 이미지 저장
+                cv2.imwrite(image_path, frame)
+                print(f'Frame {frame_count} saved at {image_path}')
+
             out.write(frame)
             frame_count += 1
             # print(f'Recorded frame count: {frame_count}')
+
 
         # 영상에 녹화 안되는 부분
         # 텍스트 추가 (현재 녹화 중임을 알려주는 메시지)
