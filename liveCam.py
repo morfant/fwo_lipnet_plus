@@ -13,11 +13,44 @@ from pythonosc import udp_client
 OSC_ADDR = "127.0.0.1"
 OSC_PORT = 30000
 
+# 대기 화면에서 재생될 영상
+WAIT_MOVIE = './waiting.mov'
+
 frame_count = 0
 save_interval = 5
 REC_SEC = 3
 REC_FILE = './camout/output.mp4'
 FACE_PREDICTOR_PATH = './predictors/shape_predictor_68_face_landmarks.dat'
+
+
+# 대기모드시 영상파일 재생을 위한 함수
+def play_video_in_existing_window(file_path, window_name, loop=True):
+    cap = cv2.VideoCapture(file_path)
+
+    if not cap.isOpened():
+        print("Error: Couldn't open video file.")
+        return
+
+    while True:
+        ret, frame = cap.read()
+
+        if not ret:
+            if loop:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                continue
+            else:
+                break
+
+        cv2.imshow(window_name, frame)
+
+        key = cv2.waitKey(25)
+
+        # 'q' 키를 누르면 종료
+        if key & 0xFF == ord('q'):
+            is_wait_mode = False
+            break
+
+    cap.release()
 
 
 def send_osc_message(osc_server_ip, osc_server_port, osc_address, osc_message):
@@ -276,9 +309,12 @@ while True:
     # 영상 재생
     cv2.imshow('Camera Feed', cv2.resize(frame, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
 
+    # 스페이스 바를 누르면 영상 파일 재생으로 전환(대기모드)
+    if key == ord(' '):
+        play_video_in_existing_window(WAIT_MOVIE, 'Camera Feed')  # 실제 파일 경로로 수정해야 함
+
     # 'esc' 키를 누르면 종료합니다.
     if key == 27:
-    # if key == ord('q'):
         break
 
 # 사용이 끝났을 때, 카메라를 해제하고 창을 닫습니다.
