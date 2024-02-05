@@ -10,6 +10,9 @@ from matplotlib import pyplot as plt
 from datetime import datetime
 from pythonosc import udp_client
 
+from lip_read import LipRead
+
+
 OSC_ADDR = "127.0.0.1"
 OSC_PORT = 30000
 
@@ -22,6 +25,10 @@ REC_SEC = 3
 REC_FILE = './camout/output.mp4'
 FACE_PREDICTOR_PATH = './predictors/shape_predictor_68_face_landmarks.dat'
 
+lipRead = LipRead()
+
+def initialize():
+    lipRead.init()
 
 # 대기모드시 영상파일 재생을 위한 함수
 def play_video_in_existing_window(file_path, window_name, loop=True):
@@ -144,6 +151,8 @@ def load_frames_from_video(filepath:str):
 
 
 # ---------------------- MAIN -----------------------
+initialize()
+
 # 카메라를 연결합니다.
 cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
 
@@ -238,6 +247,9 @@ while True:
                 print(f'load_frames_from_video: {REC_FILE}')
                 calc_frames, error_face, error_mouth = load_frames_from_video(REC_FILE)
                 # print(f'error_f: {error_face} / error_m: {error_mouth}')
+                print(f'shape of calc_frames: {calc_frames.shape}')
+
+                lipRead.predict(calc_frames)
 
                 if len(calc_frames) == 75:
 
