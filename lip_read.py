@@ -5,12 +5,15 @@ from tensorflow.keras.optimizers import Adam #`tf.keras.optimizers.Adam` runs sl
 # from tensorflow.keras.optimizers.legacy import Adam # for m1/m2 mac
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, EarlyStopping
 
+from chatgpt import ask_chatGPT
+
 MODEL_PATH = './models/checkpoint'
 
 
 class LipRead:
     def __init__(self):
         self.model = None
+        self.predict_string = None
 
     def setModel(self):
         self.model = Sequential()
@@ -38,7 +41,6 @@ class LipRead:
         self.model.add(Dense(self.char_to_num.vocabulary_size()+1, kernel_initializer='he_normal', activation='softmax'))
 
     def prepare(self):
-
         self.vocab = [x for x in "abcdefghijklmnopqrstuvwxyz'?!123456789 "]
         self.char_to_num = tf.keras.layers.StringLookup(vocabulary=self.vocab, oov_token="")
         self.num_to_char = tf.keras.layers.StringLookup(vocabulary=self.char_to_num.get_vocabulary(), oov_token="", invert=True)
@@ -67,4 +69,32 @@ class LipRead:
         decoded = tf.keras.backend.ctc_decode(yhat, input_length=[75], greedy=True)[0][0].numpy()
         print('~'*100, 'PREDICTIONS')
         rslt = [tf.strings.reduce_join([self.num_to_char(word) for word in sentence]) for sentence in decoded]
+
+        # TensorFlow 텐서에서 문자열 값 추출
+        self.predict_string = rslt[0].numpy().decode('utf-8')
+        print(self.predict_string)
+
+        return self.predict_string
+
+
+        # 문자열 list 형태
+        # string_list = self.predict_string.split(' ')  # 두 번째부터 끌까지의 단어만 추출
+        # print(string_list)
+
+    def translate(self, foreign_string):
+        if foreign_string != None:
+
+            # ChatGPT에게 요청할 텍스트
+            user_input = "\"{}\"의 한국어 발음 결과만 보여줘".format(foreign_string)
+
+            # ChatGPT에게 요청 전달
+            print("User: " +  user_input)
+            chat_response = ask_chatGPT(user_input)
+            print(chat_response)
+
+            # ChatGPT의 응답 출력
+            content = chat_response.choices[0].message.content
+            print("GPT: " + content)
+
+            return content
 

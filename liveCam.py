@@ -249,7 +249,9 @@ while True:
                 # print(f'error_f: {error_face} / error_m: {error_mouth}')
                 print(f'shape of calc_frames: {calc_frames.shape}')
 
-                lipRead.predict(calc_frames)
+                rslt = lipRead.predict(calc_frames)
+                print(lipRead.translate(rslt))
+                
 
                 if len(calc_frames) == 75:
 
