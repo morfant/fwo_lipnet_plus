@@ -7,6 +7,7 @@ from skimage.transform import resize
 import skvideo.io
 import dlib
 from lipnet.lipreading.aligns import Align
+import imageio
 
 class VideoAugmenter(object):
     @staticmethod
@@ -113,7 +114,8 @@ class Video(object):
 
     def from_frames(self, path):
         frames_path = sorted([os.path.join(path, x) for x in os.listdir(path)])
-        frames = [ndimage.imread(frame_path) for frame_path in frames_path]
+        # frames = [ndimage.imread(frame_path) for frame_path in frames_path]
+        frames = [imageio.imread(frame_path) for frame_path in frames_path]
         self.handle_type(frames)
         return self
 

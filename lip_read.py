@@ -41,7 +41,15 @@ class LipRead:
         self.model.add(Dense(self.char_to_num.vocabulary_size()+1, kernel_initializer='he_normal', activation='softmax'))
 
     def prepare(self):
-        self.vocab = [x for x in "abcdefghijklmnopqrstuvwxyz'?!123456789 "]
+
+        # eng
+        # self.vocab = [x for x in "abcdefghijklmnopqrstuvwxyz'?!123456789 "]
+
+        # kor
+        start_unicode = ord('가')  # '가'의 유니코드 값
+        end_unicode = ord('힣')    # '힣'의 유니코드 값
+        self.vocab = [chr(code) for code in range(start_unicode, end_unicode + 1)]
+        
         self.char_to_num = tf.keras.layers.StringLookup(vocabulary=self.vocab, oov_token="")
         self.num_to_char = tf.keras.layers.StringLookup(vocabulary=self.char_to_num.get_vocabulary(), oov_token="", invert=True)
 
@@ -85,16 +93,18 @@ class LipRead:
         if foreign_string != None:
 
             # ChatGPT에게 요청할 텍스트
-            user_input = "\"{}\"의 한국어 발음 결과만 보여줘".format(foreign_string)
+            user_input = "\"{}\"의 한국어 발음 결과를 'kor_result: 한국어 발음 결과' 의 형식을 지켜서 표현해줘".format(foreign_string)
 
             # ChatGPT에게 요청 전달
-            print("User: " +  user_input)
+            # print("User: " +  user_input)
             chat_response = ask_chatGPT(user_input)
-            print(chat_response)
+            # print(chat_response)
 
             # ChatGPT의 응답 출력
             content = chat_response.choices[0].message.content
-            print("GPT: " + content)
+            # print("GPT: " + content)
+            result = content.split("kor_result: ")[1]
+            # print(result)
 
-            return content
+            return result 
 

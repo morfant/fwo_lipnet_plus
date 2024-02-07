@@ -9,9 +9,14 @@ import tensorflow as tf
 from matplotlib import pyplot as plt
 from datetime import datetime
 from pythonosc import udp_client
+from PIL import ImageFont, ImageDraw, Image
 
 from lip_read import LipRead
 
+
+SUBTITLE_DUR = 5  # 자막이 표시될 시간 (초)
+predict_rslt = ""
+start_time = None
 
 OSC_ADDR = "127.0.0.1"
 OSC_PORT = 30000
@@ -25,10 +30,40 @@ REC_SEC = 3
 REC_FILE = './camout/output.mp4'
 FACE_PREDICTOR_PATH = './predictors/shape_predictor_68_face_landmarks.dat'
 
+FONT_PATH = './IBM_Plex_Sans_KR/IBMPlexSansKR-Regular.ttf'
+
 lipRead = LipRead()
+
+
 
 def initialize():
     lipRead.init()
+
+def putTextKor(src, text, pos=(10, 200), font_size=20, font_color=(255, 255, 255)) :
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 3
+
+    print(f'text: {text}')
+    text = "안녕하세요"
+
+    # 텍스트 크기 얻기
+    text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+    # print(f'text_size: {text_size}')
+
+    # 이미지 중앙에 텍스트를 출력할 위치 계산
+    # print(f'0: {src.shape[0]}') # height
+    # print(f'1: {src.shape[1]}') # width
+    text_x = (src.shape[1] - text_size[0]//3) // 2 # 왠지 모르겠지만 text_size를 3으로 나누어야 화면의 가운데가 된다
+    text_y = src.shape[0] - 40 # 40 from bottom 
+
+    img_pil = Image.fromarray(src)
+    draw = ImageDraw.Draw(img_pil)
+    font = ImageFont.truetype(FONT_PATH, font_size)
+    draw.text((text_x, text_y), text, font=font, fill=(263, 20, 216))
+    return np.array(img_pil)
+
 
 # 대기모드시 영상파일 재생을 위한 함수
 def play_video_in_existing_window(file_path, window_name, loop=True):
@@ -106,13 +141,13 @@ def count_frames(video_path):
 
     return frame_count
 
-def display_text(frame_on, text="text..", px=10, py=20, r=255, g=0, b=0):
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 0.8 
-    font_thickness = 2
-    text_position = (px, py)
-    text_color = (b, g, r)  # BGR format
-    cv2.putText(frame_on, text, text_position, font, font_scale, text_color, font_thickness)
+# def display_text(frame_on, text="text..", px=10, py=20, r=255, g=0, b=0):
+#     font = cv2.FONT_HERSHEY_SIMPLEX
+#     font_scale = 0.8 
+#     font_thickness = 2
+#     text_position = (px, py)
+#     text_color = (b, g, r)  # BGR format
+#     cv2.putText(frame_on, text, text_position, font, font_scale, text_color, font_thickness)
 
 
 def load_frames_from_video(filepath:str):
@@ -174,6 +209,7 @@ fourcc = cv2.VideoWriter_fourcc(*'MP4V')
 
 # 녹화 상태를 나타내는 변수
 recording = False
+is_prediction_done = False
 
 while True:
     # 프레임을 읽어옵니다.
@@ -214,6 +250,7 @@ while True:
                 cv2.waitKey(1000)  # 1초 대기
             print("녹화 시작")
             recording = True
+            is_prediction_done = False
             out = cv2.VideoWriter(REC_FILE, fourcc, fps, (width, height))
             start_time = cv2.getTickCount()
 
@@ -250,7 +287,8 @@ while True:
                 print(f'shape of calc_frames: {calc_frames.shape}')
 
                 rslt = lipRead.predict(calc_frames)
-                print(lipRead.translate(rslt))
+                predict_rslt = lipRead.translate(rslt)
+                print(predict_rslt)
                 
 
                 if len(calc_frames) == 75:
@@ -271,6 +309,9 @@ while True:
 
                     # print(calc_frames.shape)
                     imageio.mimsave('./camout/animation.gif', (calc_frames * 255).numpy().astype('uint8').squeeze(), fps=fps)
+
+                is_prediction_done = True
+                start_time = time.time()
 
             
 
@@ -322,6 +363,29 @@ while True:
 
     # 영상 재생
     cv2.imshow('Camera Feed', cv2.resize(frame, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
+
+
+    # 일정 시간 동안만 자막 표시
+    # 폰트 및 텍스트 설정
+    # font = cv2.FONT_HERSHEY_TRIPLEX
+    # from_left_top_corner = (10, 260)  # 자막 위치 조정
+    # font_scale = 0.8
+    # font_color = (255, 255, 255)  # 흰색
+    # line_type = 2
+
+    if start_time != None and is_prediction_done == True and recording == False:
+        elapsed_time = time.time() - start_time
+        # print(f'start_time: {start_time}')
+        # print(f'elapsed_time: {elapsed_time}')
+        if elapsed_time < SUBTITLE_DUR:
+            # print(f"subtitle: {elapsed_time}")
+            # img = np.zeros((width, height, 3), dtype = np.uint8)
+            # print(type(img))
+            img = putTextKor(frame, predict_rslt)
+            # cv2.putText(frame, predict_rslt, from_left_top_corner, font, font_scale, font_color, line_type)
+            cv2.imshow('Camera Feed', img)
+
+
 
     # 스페이스 바를 누르면 영상 파일 재생으로 전환(대기모드)
     if key == ord(' '):
