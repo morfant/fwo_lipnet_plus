@@ -17,16 +17,18 @@ from pythonosc.dispatcher import Dispatcher
 import asyncio
 
 
-is_wait_mode = 1 # 1: True / 0: False 
+is_wait_mode = 0 # 1: True / 0: False 
 
-def filter_handler(address, *args):
+
+# OSC receive handler
+def mode_handler(address, *args):
     global is_wait_mode
     is_wait_mode = args[0]
     # print(f"{address}: {args}")
 
 # OSC Server(Async) setup
 dispatcher = Dispatcher()
-dispatcher.map("/is_wait_mode", filter_handler) # Address pattern, handler function
+dispatcher.map("/is_wait_mode", mode_handler) # Address pattern, handler function
 ip = "127.0.0.1" # receiving ip
 port = 1337 # receiving port
 
@@ -59,33 +61,41 @@ def putTextKor(src, text, pos=(10, 200), font_size=20, font_color=(255, 255, 255
 
 
 # 대기모드시 영상파일 재생을 위한 함수
-def play_video_in_existing_window(file_path, window_name, loop=True):
-    cap = cv2.VideoCapture(file_path)
+async def play_video_in_existing_window(file_path, window_name, loop=True):
+    global is_wait_mode
+    is_key_pressed = False
+    cap_mov = cv2.VideoCapture(file_path)
 
-    if not cap.isOpened():
+    if not cap_mov.isOpened():
         print("Error: Couldn't open video file.")
         return
 
     while True:
-        ret, frame = cap.read()
+        ret, frame = cap_mov.read()
 
         if not ret:
             if loop:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                cap_mov.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 continue
             else:
                 break
 
         cv2.imshow(window_name, frame)
 
-        key = cv2.waitKey(25)
-
-        # ' ' 키를 누르면 종료
-        if key & 0xFF == ord(' '):
-            is_wait_mode = False
+        # print(f'is_wait_mode in function: {is_wait_mode}')
+        if is_wait_mode == 0 and is_key_pressed == False:
             break
 
-    cap.release()
+        # 'm' 키를 누르면 종료합니다.
+        key = cv2.waitKey(25)
+        if key == ord('m'):
+            is_key_pressed = True
+            is_wait_mode = 0
+            break
+
+        await asyncio.sleep(0.01)
+
+    cap_mov.release()
 
 
 
@@ -234,6 +244,8 @@ async def loop():
     is_prediction_done = False
 
 
+
+    global is_wait_mode
     while True:
         
         print(f'is_wait_mode: {is_wait_mode}')
@@ -245,7 +257,6 @@ async def loop():
         if not ret:
             break
 
-            
         # 읽어온 프레임을 360 x 288로 리사이징합니다.
         frame = cv2.resize(frame, (width, height))
 
@@ -389,8 +400,8 @@ async def loop():
 
 
         # 영상 재생
-        cv2.imshow('Camera Feed', cv2.resize(frame, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
-
+        if is_wait_mode == 0:
+            cv2.imshow('Camera Feed', cv2.resize(frame, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
 
         # 일정 시간 동안만 자막 표시
         if start_time != None and is_prediction_done == True and recording == False:
@@ -403,15 +414,17 @@ async def loop():
                 cv2.imshow('Camera Feed', img)
 
 
+        # 'm' 키를 누르면 대기모드로 전환
+        if key == ord('m'):
+            is_wait_mode = 1
 
-        # 스페이스 바를 누르면 영상 파일 재생으로 전환(대기모드)
-        if key == ord(' '):
-            play_video_in_existing_window(WAIT_MOVIE, 'Camera Feed')  # 실제 파일 경로로 수정해야 함
+        # 대기모드일 때 동영상 재생
+        if is_wait_mode == 1:
+            await play_video_in_existing_window(WAIT_MOVIE, 'Camera Feed')
 
         # 'esc' 키를 누르면 종료합니다.
         if key == 27:
             break
-
 
         await asyncio.sleep(0.01)
 
@@ -421,6 +434,7 @@ async def loop():
 
 
 async def init_main():
+    # OSC Server
     server = AsyncIOOSCUDPServer((ip, port), dispatcher, asyncio.get_event_loop())
     transport, protocol = await server.create_serve_endpoint()  # Create datagram endpoint and start serving
 
@@ -430,3 +444,14 @@ async def init_main():
 
 asyncio.run(init_main())
 
+
+
+# 단축키
+'''
+영상모드 <-> 대기모드 : m
+
+녹화 시작 : r
+
+종료 : esc
+
+'''
