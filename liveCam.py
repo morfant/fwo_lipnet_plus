@@ -283,6 +283,9 @@ async def loop():
         # 읽어온 프레임을 360 x 288로 리사이징합니다.
         frame = cv2.resize(frame, (width, height))
 
+        # 좌우 반전 적용
+        frame = cv2.flip(frame, 1)
+
         # 'r' 키를 누르면 녹화 시작 또는 종료
         key = cv2.waitKey(1) & 0xFF
         # if key == ord('r') or is_wait_mode == 0:
