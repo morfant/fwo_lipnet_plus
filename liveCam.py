@@ -16,39 +16,33 @@ from pythonosc.osc_server import AsyncIOOSCUDPServer
 from pythonosc.dispatcher import Dispatcher
 import asyncio
 
+import threading
 
-is_wait_mode = 0 # 1: True / 0: False 
-is_rec_mode = 0
+
+# 상태를 나타내는 변수들
+is_wait_mode = False # 1: True / 0: False 
+is_count_mode = False 
+is_rec_mode = False 
+is_prediction_done = False
+
+current_frame = None
+
+COUNT_DOWN_START = 3
+mov_writer = None
 
 
 # OSC receive handler
 def mode_handler(address, *args):
     global is_wait_mode
-    is_wait_mode = args[0]
     print(f"{address}: {args}")
+    is_wait_mode = bool(args[0])
+    # print(is_wait_mode)
 
 # OSC Server(Async) setup
 dispatcher = Dispatcher()
 dispatcher.map("/is_wait_mode", mode_handler) # Address pattern, handler function
 ip = "127.0.0.1" # receiving ip
 port = 1337 # receiving port
-
-
-
-async def countdown(width, height, frame):
-    
-    for countdown in range(3, 0, -1):
-        text = f'{countdown}'
-        print(f'countdown(): {text}')
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1
-        font_thickness = 2
-        text_position = (int(width / 2), int(height / 2 - 50))
-        text_color = (0, 0, 255)  # BGR format
-        frame_with_countdown = frame.copy()
-        cv2.putText(frame_with_countdown, text, text_position, font, font_scale, text_color, font_thickness)
-        cv2.imshow('Camera Feed', cv2.resize(frame_with_countdown, (2 * width, 2 * height)))
-        await asyncio.sleep(1)  # 1초 대기
 
 
 def putTextKor(src, text, pos=(10, 200), font_size=20, font_color=(255, 255, 255)) :
@@ -58,7 +52,6 @@ def putTextKor(src, text, pos=(10, 200), font_size=20, font_color=(255, 255, 255
     font_scale = 1
     font_thickness = 3
 
-    print(f'text: {text}')
     # text = "안녕하세요"
 
     # 텍스트 크기 얻기
@@ -80,7 +73,7 @@ def putTextKor(src, text, pos=(10, 200), font_size=20, font_color=(255, 255, 255
 
 # 대기모드시 영상파일 재생을 위한 함수
 async def play_video_in_existing_window(file_path, window_name, loop=True):
-    global is_wait_mode, is_rec_mode, recording
+    global is_wait_mode, is_rec_mode, is_count_mode, is_prediction_done
     is_key_pressed = False
     cap_mov = cv2.VideoCapture(file_path)
 
@@ -100,19 +93,22 @@ async def play_video_in_existing_window(file_path, window_name, loop=True):
 
         cv2.imshow(window_name, frame)
 
-        # print(f'is_wait_mode in function: {is_wait_mode}')
-        if is_wait_mode == 0 and is_key_pressed == False:
-            is_rec_mode = 0
-            recording = False
+        # OSC를 통해 대기모드가 종료될 때
+        if is_wait_mode == False and is_key_pressed == False:
+            is_wait_mode = False 
+            is_rec_mode = False
+            is_count_mode = False
+            is_prediction_done = False
             break
 
-        # 'm' 키를 누르면 종료합니다.
+        # 'm' 키를 통해 대기모드가 종료될 때
         key = cv2.waitKey(25)
         if key == ord('m'):
             is_key_pressed = True
-            is_wait_mode = 0
-            is_rec_mode = 0
-            recording = False
+            is_wait_mode = False 
+            is_rec_mode = False
+            is_count_mode = False
+            is_prediction_done = False
             break
 
         await asyncio.sleep(0.01)
@@ -262,19 +258,17 @@ async def loop():
     # 비디오 라이터 생성
     fourcc = cv2.VideoWriter_fourcc(*'MP4V')
 
-    # 녹화 상태를 나타내는 변수
-    recording = False
-    is_prediction_done = False
 
 
 
-    global is_wait_mode, is_rec_mode
+    global is_wait_mode, is_rec_mode, is_count_mode, is_prediction_done, mov_writer
     while True:
         
         # print(f'is_wait_mode: {is_wait_mode}')
 
         # 프레임을 읽어옵니다.
         ret, frame = cap.read()
+        # print("new frame!")
 
         # 읽어온 프레임이 없으면 종료합니다.
         if not ret:
@@ -286,53 +280,33 @@ async def loop():
         # 좌우 반전 적용
         frame = cv2.flip(frame, 1)
 
-        # 'r' 키를 누르면 녹화 시작 또는 종료
+        # key 입력 받기
         key = cv2.waitKey(1) & 0xFF
-        # if key == ord('r') or is_wait_mode == 0:
-        if key == ord('r'):
-            print(f'check is_rec_mode: {is_rec_mode}')
-            if not recording and is_rec_mode == 0:
-                is_rec_mode = 1
 
-                # 이전에 녹화된 파일 삭제
-                # try:
-                #     os.remove(REC_FILE)
-                #     print(f'{REC_FILE} 파일이 삭제되었습니다.')
-                # except OSError as e:
-                #     print(f'파일 삭제 오류: {e.filename} - {e.strerror}')
+        # 'c' 키를 누르면 count 모드로 전환
+        if key == ord('c'):
+            if is_count_mode == True:
+                is_count_mode = False 
+            else:
+                is_count_mode = True 
+                # print(f'is_count_mode: {is_count_mode}')
+                start_time = cv2.getTickCount()
 
 
-                # async
-                # await countdown(width, height, frame)
+        # 카운트 모드일 때 count down 숫자 표시
+        if is_count_mode == True:
+            frame_count = 0 # frame_count 초기화
+            is_prediction_done = False
+            elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
+            count_down = COUNT_DOWN_START - int(elapsed_time)
 
-                # sync
-                # frame_count 초기화
-                frame_count = 0
-
-                # 3초 카운트 다운 표시
-                cv2.waitKey(1000)  # 1초 대기, PRE_COUNTDOWN
-                for countdown in range(3, 0, -1):
-                    text = f'{countdown}'
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    font_scale = 1
-                    font_thickness = 2
-                    text_position = (int(width / 2), int(height / 2 - 50))
-                    text_color = (0, 0, 255)  # BGR format
-                    frame_with_countdown = frame.copy()
-                    cv2.putText(frame_with_countdown, text, text_position, font, font_scale, text_color, font_thickness)
-                    print(f'countdown text : {countdown}')
-                    cv2.imshow('Camera Feed', cv2.resize(frame_with_countdown, (2 * width, 2 * height)))
-                    cv2.waitKey(1000)  # 1초 대기
-                    # await asyncio.sleep(1) # 비동기로 처리하면  camera feed 에 글자가 표시되지 않는다
-
-                await asyncio.sleep(0.1) # 카운트 다운 도중 관객 이탈 감지를 위한 코드
-                if is_wait_mode == 1:
-                    continue
+            # 카운트 다운이 끝났을 때
+            if count_down < 0:
 
                 print("녹화 시작")
-                recording = True
-                is_prediction_done = False
-                out = cv2.VideoWriter(REC_FILE, fourcc, fps, (width, height))
+                mov_writer = cv2.VideoWriter(REC_FILE, fourcc, fps, (width, height))
+                # print(mov_writer)
+
                 start_time = cv2.getTickCount()
 
                 # 프레임 이미지 저장할 폴더 생성
@@ -340,23 +314,36 @@ async def loop():
                 send_osc_message(OSC_ADDR, OSC_PORT, "/current_directory", output_directory)
                 # print(output_directory)
 
-            # else:
-            #     print("녹화 종료") # 녹화 도중 다시 'r'을 눌렀을 때
-            #     recording = False
+                # 다음 프레임 부터 rec_mode로 넘어감
+                is_count_mode = False 
+                is_rec_mode = True 
+
+
+            # 카운트다운이 진행 중일 때
+            if count_down >= 0: # 3, 2, 1, 0 까지 표시
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 1
+                font_thickness = 2
+                text_position = (int(width / 2), int(height / 2 - 50))
+                text_color = (0, 0, 255)  # BGR format
+                text = str(count_down)
+                cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness)
+
+
 
         # 녹화 중일 때
-        if recording:
+        if is_rec_mode:
             if frame_count < REC_FRAME:
-                if is_wait_mode == 1:
+                if is_wait_mode == True: # 관객이 사라지면
                     print('녹화 중단!!')
 
                     # record가 끝나면 현재 시간을 OSC로 전송
                     timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
                     send_osc_message(OSC_ADDR, OSC_PORT, "/record_end", timestamp)
 
-                    out.release() # 파일 저장
-                    out = None
-                    recording = False
+                    mov_writer.release() # 파일 저장
+                    mov_writer = None
+                    is_rec_mode = False 
                     is_prediction_done = False
 
 
@@ -369,9 +356,9 @@ async def loop():
                 timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
                 send_osc_message(OSC_ADDR, OSC_PORT, "/record_end", timestamp)
 
-                out.release() # 파일 저장
-                out = None
-                recording = False
+                mov_writer.release() # 파일 저장
+                mov_writer = None
+                is_rec_mode = False 
 
                 if os.path.exists(REC_FILE): # 영상 파일 저장된 것이 확인 되면
                     calc_frames = []
@@ -381,10 +368,10 @@ async def loop():
                     print(f'shape of calc_frames: {calc_frames.shape}')
 
                     predict_rslt = lipRead.predict(calc_frames)
-                    print(predict_rslt)
+                    # print(predict_rslt)
                     # predict_rslt = lipRead.translate(rslt)
-                    
 
+                    # 인식된 입모양 plot 
                     if len(calc_frames) == 75:
 
                         # 3 x 2 배열 
@@ -401,8 +388,9 @@ async def loop():
                         plt.pause(0.5)
                         plt.draw()
 
-                        # print(calc_frames.shape)
+                        # gif 애니메이션 저장
                         imageio.mimsave('./camout/animation.gif', (calc_frames * 255).numpy().astype('uint8').squeeze(), fps=fps)
+
 
                     is_prediction_done = True
                     start_time = time.time()
@@ -410,7 +398,7 @@ async def loop():
                 
 
             # 영상 저장
-            if out != None: # 영상이 저장되고 있다면
+            if mov_writer != None: # 영상이 저장되고 있다면
 
                 # 일정 간격마다 이미지 저장
                 if frame_count % save_interval == 0:
@@ -423,7 +411,8 @@ async def loop():
                     cv2.imwrite(image_path, frame)
                     # print(f'Frame {frame_count} saved at {image_path}')
 
-                out.write(frame)
+                # print('writing frame..')
+                mov_writer.write(frame)
                 frame_count += 1
                 # print(f'Recorded frame count: {frame_count}')
 
@@ -456,34 +445,36 @@ async def loop():
 
 
         # 영상 재생
-        if is_wait_mode == 0:
+        if is_wait_mode == False:
+            # print('show frame!')
             cv2.imshow('Camera Feed', cv2.resize(frame, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
 
             # 일정 시간 동안만 자막 표시
-            if start_time != None and is_prediction_done == True and recording == False:
+            if start_time != None and is_prediction_done == True and is_rec_mode == False:
                 elapsed_time = time.time() - start_time
                 # print(f'start_time: {start_time}')
                 # print(f'elapsed_time: {elapsed_time}')
                 if elapsed_time < SUBTITLE_DUR:
                     # print(f"subtitle: {elapsed_time}")
+                    print(f'predict_rslt: {predict_rslt}')
                     img = putTextKor(frame, predict_rslt)
                     cv2.imshow('Camera Feed', img)
 
                 else:
-                    is_rec_mode = 0
+                    is_prediction_done = False
                 
 
 
 
         # 'm' 키를 누르면 대기모드로 전환
         if key == ord('m'):
-            is_wait_mode = 1
+            is_wait_mode = True 
 
         # 대기모드일 때 동영상 재생
-        if is_wait_mode == 1:
+        if is_wait_mode == True:
             await play_video_in_existing_window(WAIT_MOVIE, 'Camera Feed')
 
-        # 'esc' 키를 누르면 종료합니다.
+        # 'esc' 키를 누르면 프로그램 종료합니다.
         if key == 27:
             break
 
@@ -511,7 +502,7 @@ asyncio.run(init_main())
 '''
 영상모드 <-> 대기모드 : m
 
-녹화 시작 : r
+녹화 시작 : 
 
 종료 : esc
 

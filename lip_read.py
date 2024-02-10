@@ -7,7 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, E
 
 from chatgpt import ask_chatGPT
 
-MODEL_PATH = './models/kor_30/checkpoint'
+MODEL_PATH = './models/kor_56/checkpoint'
 
 
 class LipRead:
@@ -75,15 +75,16 @@ class LipRead:
 
     def predict(self, data):
         data = tf.expand_dims(data, axis=0)
-        print(f'predic() data: {data.shape}')
+        print(f'predic() data shape: {data.shape}')
         yhat = self.model.predict(data)
         decoded = tf.keras.backend.ctc_decode(yhat, input_length=[75], greedy=True)[0][0].numpy()
-        print('~'*100, 'PREDICTIONS')
+        print('~'*100, 'PREDICTIONS BEGIN')
         rslt = [tf.strings.reduce_join([self.num_to_char(word) for word in sentence]) for sentence in decoded]
 
         # TensorFlow 텐서에서 문자열 값 추출
         self.predict_string = rslt[0].numpy().decode('utf-8')
-        print(self.predict_string)
+        print(f'prediction: {self.predict_string}')
+        print('~'*100, 'PREDICTION END')
 
         return self.predict_string
 
