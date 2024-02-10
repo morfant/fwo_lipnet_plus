@@ -16,18 +16,13 @@ from pythonosc.osc_server import AsyncIOOSCUDPServer
 from pythonosc.dispatcher import Dispatcher
 import asyncio
 
-import threading
 
-
-# 상태를 나타내는 변수들
+# 상태를 나타내는 global 변수들
 is_wait_mode = False # 1: True / 0: False 
 is_count_mode = False 
 is_rec_mode = False 
 is_prediction_done = False
 
-current_frame = None
-
-COUNT_DOWN_START = 3
 mov_writer = None
 
 
@@ -165,14 +160,6 @@ def count_frames(video_path):
 
     return frame_count
 
-# def display_text(frame_on, text="text..", px=10, py=20, r=255, g=0, b=0):
-#     font = cv2.FONT_HERSHEY_SIMPLEX
-#     font_scale = 0.8 
-#     font_thickness = 2
-#     text_position = (px, py)
-#     text_color = (b, g, r)  # BGR format
-#     cv2.putText(frame_on, text, text_position, font, font_scale, text_color, font_thickness)
-
 
 def load_frames_from_video(filepath:str):
     print(f'load_frames_from_video() path: {filepath}')
@@ -214,29 +201,25 @@ def load_frames_from_video(filepath:str):
 # ---------------------- MAIN -----------------------
 async def loop():
 
-    elapsed_frame = 0
+    COUNT_DOWN_START = 3 # 카운트 다운 시작 값
 
+    REC_FRAME = 75 # 녹화할 총 frame 수
     SUBTITLE_DUR = 5  # 자막이 표시될 시간 (초)
-    predict_rslt = ""
-    start_time = None
-    REC_FRAME = 75
 
     OSC_ADDR = "127.0.0.1"
     OSC_PORT = 30000
 
     # 대기 화면에서 재생될 영상
     WAIT_MOVIE = './waiting.mov'
+    REC_FILE = './camout/output.mp4' # 영상 파일 저장 경로
+    SAVE_INTERVAL = 5 # frame 이미지 저장 사이 간격
 
     frame_count = 0
-    save_interval = 5
-    REC_SEC = 3
-    REC_FILE = './camout/output.mp4'
-
-
-    lipRead = LipRead()
-
+    predict_rslt = ""
+    start_time = None
 
     # lip read
+    lipRead = LipRead()
     lipRead.init()
 
     # 카메라를 연결합니다.
@@ -321,13 +304,40 @@ async def loop():
 
             # 카운트다운이 진행 중일 때
             if count_down >= 0: # 3, 2, 1, 0 까지 표시
+
+                # 카운트 다운 숫자 표시하기
+                text = str(count_down)
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 font_scale = 1
                 font_thickness = 2
-                text_position = (int(width / 2), int(height / 2 - 50))
                 text_color = (0, 0, 255)  # BGR format
-                text = str(count_down)
-                cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness)
+
+                # 텍스트 크기 얻기
+                text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+                # print(f'text_size: {text_size}')
+
+                # 화면의 가운데 위치에서 글자의 가로 크기의 절반 만큼을 뺀다(글자가 표시되는 기준이 글자의 왼쪽 하단 모서리)
+                text_position = ((width // 2) - (text_size[0] // 2), int(height / 2 - 50))
+                cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness, cv2.LINE_AA)
+
+
+                # 화면의 가운데 사각형 그리기
+                # 중심 좌표와 크기
+                center = (frame.shape[1] // 2, frame.shape[0] // 2)  # 이미지 중심 좌표
+
+                # pt1과 pt2 계산
+                r_width = width * 2 // 3
+                r_height = height * 2 // 3
+
+                pt1 = (center[0] - r_width // 2, center[1] - r_height // 2)
+                pt2 = (center[0] + r_width // 2, center[1] + r_height // 2)
+                # print(f'pt1: {pt1} / pt2: {pt2}')
+
+                rect_color = (0, 255, 0)  # BGR format (green)
+                rect_thickness = 1
+                cv2.rectangle(frame, pt1, pt2, rect_color, rect_thickness)
+
+
 
 
 
@@ -401,7 +411,7 @@ async def loop():
             if mov_writer != None: # 영상이 저장되고 있다면
 
                 # 일정 간격마다 이미지 저장
-                if frame_count % save_interval == 0:
+                if frame_count % SAVE_INTERVAL == 0:
 
                     # 이미지 파일 경로 설정
                     formatted_number = f"{frame_count:03d}"
@@ -425,23 +435,31 @@ async def loop():
             font_thickness = 2
             text_position = (10, 25)
             text_color = (0, 0, 255)  # BGR format
-            cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness)
+            cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
             # 화면 왼쪽에서 오른쪽으로 '.' 문자 채우기
             font_scale = 1 
             elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
             MAX_DOT_NUM = 36
-            # dots = min(int(elapsed_time * MAX_DOT_NUM / REC_SEC), MAX_DOT_NUM)
             dots = min(int(frame_count * MAX_DOT_NUM / 75), MAX_DOT_NUM)
             progress_text = '.' * dots
-            cv2.putText(frame, progress_text, (0, 40), font, font_scale, text_color, font_thickness)
+            cv2.putText(frame, progress_text, (0, 40), font, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
-            # Draw a rectangle on the screen (not included in recording)
-            rect_start_point = (50, 50)
-            rect_end_point = (300, 250)
+            # 중심 좌표와 크기
+            center = (frame.shape[1] // 2, frame.shape[0] // 2)  # 이미지 중심 좌표
+
+            # pt1과 pt2 계산
+            r_width = width * 2 // 3
+            r_height = height * 2 // 3
+
+            pt1 = (center[0] - r_width // 2, center[1] - r_height // 2)
+            pt2 = (center[0] + r_width // 2, center[1] + r_height // 2)
+            # print(f'pt1: {pt1} / pt2: {pt2}')
+
             rect_color = (0, 255, 0)  # BGR format (green)
             rect_thickness = 2
-            cv2.rectangle(frame, rect_start_point, rect_end_point, rect_color, rect_thickness)
+            cv2.rectangle(frame, pt1, pt2, rect_color, rect_thickness)
+
 
 
         # 영상 재생
@@ -502,7 +520,7 @@ asyncio.run(init_main())
 '''
 영상모드 <-> 대기모드 : m
 
-녹화 시작 : 
+녹화 시작 : c
 
 종료 : esc
 
