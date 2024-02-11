@@ -227,13 +227,14 @@ async def loop():
 
     # 새로운 해상도 설정
     width = 360
-    height = 288
+    # height = 288
+    height = 320 
     fps = 25
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
     # 창을 생성합니다.
-    cv2.namedWindow('Camera Feed', cv2.WINDOW_NORMAL)
+    cv2.namedWindow('Camera Feed', cv2.WINDOW_GUI_NORMAL)
 
     # 항상 화면 맨 위에 표시되도록 설정합니다.
     cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_TOPMOST, 1)
@@ -242,6 +243,8 @@ async def loop():
     fourcc = cv2.VideoWriter_fourcc(*'MP4V')
 
 
+    # 바탕 이미지 불러오기
+    background_image = cv2.imread('./background_image.png')
 
 
     global is_wait_mode, is_rec_mode, is_count_mode, is_prediction_done, mov_writer
@@ -257,9 +260,11 @@ async def loop():
         if not ret:
             break
 
-        # 가운데를 기준으로 영상의 좌우를 잘라 정사각형으로 만들기
+
+        # 카메라 영상 비율 조정 --> 윈도우의 비율도 결정됨
         # 영상의 가로와 세로 중 작은 값을 구함
         min_dimension = min(frame.shape[0], frame.shape[1])
+        # print(min_dimension)
 
         # 중앙 부분을 잘라내어 1:1 비율로 만듦
         start_x = (frame.shape[1] - min_dimension) // 2
@@ -267,11 +272,13 @@ async def loop():
         end_x = start_x + min_dimension
         end_y = start_y + min_dimension
 
-        cropped_frame = frame[start_y:end_y, start_x:end_x]
-        width = height = frame.shape[1] 
-        
-        # 영상 크기 조절 (1:1 비율)
-        frame = cv2.resize(cropped_frame, (width, height))
+        # print(f'sx: {start_x} / sy: {start_y} / ex: {end_x} / ey: {end_y}')
+        frame = frame[start_y:end_y, start_x:end_x]
+
+        width = height = frame.shape[1] # 288
+
+        # 영상 크기 조절
+        frame = cv2.resize(frame, (width, height))
 
         # 좌우 반전 적용
         frame = cv2.flip(frame, 1)
@@ -481,7 +488,30 @@ async def loop():
         # 영상 재생
         if is_wait_mode == False:
             # print('show frame!')
-            cv2.imshow('Camera Feed', cv2.resize(frame, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
+            # cv2.imshow('Camera Feed', cv2.resize(frame, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
+
+            
+            # 바탕 이미지 
+            # 카메라 영상 크기와 일치하도록 바탕 이미지 크기 조절
+            background_image_resized = cv2.resize(background_image, (width, height))
+
+            # 바탕 이미지에 카메라 영상을 삽입할 위치 지정
+            on_width = width // 2
+            on_height = height // 2
+            start_x = (width - on_width) // 2
+            start_y = (height - on_height) // 2 
+            end_x = start_x + on_width
+            end_y = start_y + on_height
+
+            # 영상 크기 조절 - 아래 코드에서 삽입되는 크기와 일치해야 함
+            frame_on_image = cv2.resize(frame, (on_width, on_height))
+
+            # 바탕 이미지에 카메라 영상을 삽입
+            background_image_resized[start_y:end_y, start_x:end_x] = frame_on_image
+            frame_with_image = background_image_resized
+            cv2.imshow('Camera Feed', cv2.resize(frame_with_image, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
+
+            cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
             # 일정 시간 동안만 자막 표시
             if start_time != None and is_prediction_done == True and is_rec_mode == False:
@@ -491,7 +521,7 @@ async def loop():
                 if elapsed_time < SUBTITLE_DUR:
                     # print(f"subtitle: {elapsed_time}")
                     print(f'predict_rslt: {predict_rslt}')
-                    img = putTextKor(frame, predict_rslt)
+                    img = putTextKor(frame_with_image, predict_rslt)
                     cv2.imshow('Camera Feed', img)
 
                 else:
