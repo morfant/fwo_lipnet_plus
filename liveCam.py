@@ -257,8 +257,21 @@ async def loop():
         if not ret:
             break
 
-        # 읽어온 프레임을 360 x 288로 리사이징합니다.
-        frame = cv2.resize(frame, (width, height))
+        # 가운데를 기준으로 영상의 좌우를 잘라 정사각형으로 만들기
+        # 영상의 가로와 세로 중 작은 값을 구함
+        min_dimension = min(frame.shape[0], frame.shape[1])
+
+        # 중앙 부분을 잘라내어 1:1 비율로 만듦
+        start_x = (frame.shape[1] - min_dimension) // 2
+        start_y = (frame.shape[0] - min_dimension) // 2
+        end_x = start_x + min_dimension
+        end_y = start_y + min_dimension
+
+        cropped_frame = frame[start_y:end_y, start_x:end_x]
+        width = height = frame.shape[1] 
+        
+        # 영상 크기 조절 (1:1 비율)
+        frame = cv2.resize(cropped_frame, (width, height))
 
         # 좌우 반전 적용
         frame = cv2.flip(frame, 1)
