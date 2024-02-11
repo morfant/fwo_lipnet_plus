@@ -294,12 +294,15 @@ async def loop():
 
                 # 프레임 이미지 저장할 폴더 생성
                 output_directory = create_output_directory()
-                send_osc_message(OSC_ADDR, OSC_PORT, "/current_directory", output_directory)
+                send_osc_message(OSC_ADDR, OSC_PORT, "/current_directory", output_directory + '/')
                 # print(output_directory)
 
                 # 다음 프레임 부터 rec_mode로 넘어감
                 is_count_mode = False 
                 is_rec_mode = True 
+
+                timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
+                send_osc_message(OSC_ADDR, OSC_PORT, "/record_start", timestamp)
 
 
             # 카운트다운이 진행 중일 때
