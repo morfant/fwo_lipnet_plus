@@ -16,6 +16,8 @@ from pythonosc.osc_server import AsyncIOOSCUDPServer
 from pythonosc.dispatcher import Dispatcher
 import asyncio
 
+import NDIlib as ndi
+
 
 # 상태를 나타내는 global 변수들
 is_wait_mode = False # 1: True / 0: False 
@@ -245,6 +247,13 @@ async def loop():
 
     # 바탕 이미지 불러오기
     background_image = cv2.imread('./background_image.png')
+
+    # NDI
+    send_settings = ndi.SendCreate()
+    send_settings.ndi_name = 'ndi-python'
+
+    ndi_send = ndi.send_create(send_settings)
+    video_frame = ndi.VideoFrameV2()
 
 
     global is_wait_mode, is_rec_mode, is_count_mode, is_prediction_done, mov_writer
@@ -511,7 +520,7 @@ async def loop():
             frame_with_image = background_image_resized
             cv2.imshow('Camera Feed', cv2.resize(frame_with_image, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
 
-            cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            # cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
             # 일정 시간 동안만 자막 표시
             if start_time != None and is_prediction_done == True and is_rec_mode == False:
@@ -526,6 +535,16 @@ async def loop():
 
                 else:
                     is_prediction_done = False
+
+            
+            
+            # NDI send
+            img = cv2.cvtColor(frame_with_image, cv2.COLOR_BGR2BGRA)
+
+            video_frame.data = img
+            video_frame.FourCC = ndi.FOURCC_VIDEO_TYPE_BGRX
+
+            ndi.send_send_video_v2(ndi_send, video_frame)
                 
 
 
@@ -545,6 +564,8 @@ async def loop():
         await asyncio.sleep(0.01)
 
     # 사용이 끝났을 때, 카메라를 해제하고 창을 닫습니다.
+    ndi.send_destroy(ndi_send)
+    ndi.destroy()
     cap.release()
     cv2.destroyAllWindows()
 
