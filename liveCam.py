@@ -28,6 +28,15 @@ is_prediction_done = False
 mov_writer = None
 
 
+
+# NDI
+send_settings = ndi.SendCreate()
+send_settings.ndi_name = 'ndi-python'
+ndi_send = ndi.send_create(send_settings)
+video_frame = ndi.VideoFrameV2()
+
+
+
 # OSC receive handler
 def mode_handler(address, *args):
     global is_wait_mode
@@ -80,6 +89,12 @@ async def play_video_in_existing_window(file_path, window_name, loop=True):
 
     while True:
         ret, frame = cap_mov.read()
+
+        # NDI send
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+        video_frame.data = img
+        video_frame.FourCC = ndi.FOURCC_VIDEO_TYPE_BGRX
+        ndi.send_send_video_v2(ndi_send, video_frame)
 
         if not ret:
             if loop:
@@ -247,14 +262,6 @@ async def loop():
 
     # 바탕 이미지 불러오기
     background_image = cv2.imread('./background_image.png')
-
-    # NDI
-    send_settings = ndi.SendCreate()
-    send_settings.ndi_name = 'ndi-python'
-
-    ndi_send = ndi.send_create(send_settings)
-    video_frame = ndi.VideoFrameV2()
-
 
     global is_wait_mode, is_rec_mode, is_count_mode, is_prediction_done, mov_writer
     while True:
@@ -518,6 +525,7 @@ async def loop():
             # 바탕 이미지에 카메라 영상을 삽입
             background_image_resized[start_y:end_y, start_x:end_x] = frame_on_image
             frame_with_image = background_image_resized
+            # frame_with_image_and_subtitle = None
             cv2.imshow('Camera Feed', cv2.resize(frame_with_image, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
 
             # cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
@@ -530,8 +538,8 @@ async def loop():
                 if elapsed_time < SUBTITLE_DUR:
                     # print(f"subtitle: {elapsed_time}")
                     print(f'predict_rslt: {predict_rslt}')
-                    img = putTextKor(frame_with_image, predict_rslt)
-                    cv2.imshow('Camera Feed', img)
+                    frame_with_image = putTextKor(frame_with_image, predict_rslt)
+                    cv2.imshow('Camera Feed', frame_with_image)
 
                 else:
                     is_prediction_done = False
