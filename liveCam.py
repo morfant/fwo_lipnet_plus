@@ -19,9 +19,11 @@ import asyncio
 import NDIlib as ndi
 
 
+VIEW_SCALE = 2
+
 # 상태를 나타내는 global 변수들
 is_wait_mode = False # 1: True / 0: False 
-is_guide_mode = True # 녹화 시작 전 안내 영상 송출
+is_guide_mode = False # 녹화 시작 전 안내 영상 송출
 is_count_mode = False 
 is_rec_mode = False 
 is_play_mode = False # 녹화된 사진과 오디오가 재생되고 있는지
@@ -37,6 +39,7 @@ send_settings = ndi.SendCreate()
 send_settings.ndi_name = 'ndi-python'
 ndi_send = ndi.send_create(send_settings)
 video_frame = ndi.VideoFrameV2()
+
 
 
 # OSC receive handler
@@ -63,11 +66,12 @@ ip = "127.0.0.1" # receiving ip
 port = 1337 # receiving port
 
 
-def putTextKor(src, text, pos=(10, 200), font_size=20, font_color=(255, 255, 255)) :
+def putTextKor(src, text, pos=(10, 140), font_size=80, font_color=(255, 255, 255)) :
+    global VIEW_SCALE
 
     FONT_PATH = './IBM_Plex_Sans_KR/IBMPlexSansKR-Regular.ttf'
     font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 1
+    font_scale = VIEW_SCALE * 3 
     font_thickness = 3
 
     # text = "안녕하세요"
@@ -80,7 +84,7 @@ def putTextKor(src, text, pos=(10, 200), font_size=20, font_color=(255, 255, 255
     # print(f'0: {src.shape[0]}') # height
     # print(f'1: {src.shape[1]}') # width
     text_x = (src.shape[1] - text_size[0]//3) // 2 # 왠지 모르겠지만 text_size를 3으로 나누어야 화면의 가운데가 된다
-    text_y = src.shape[0] - 40 # 40 from bottom 
+    text_y = src.shape[0] - 150 # 150 from bottom 
 
     img_pil = Image.fromarray(src)
     draw = ImageDraw.Draw(img_pil)
@@ -282,6 +286,7 @@ def load_frames_from_video(filepath:str):
 # ---------------------- MAIN -----------------------
 async def loop():
 
+    
     COUNT_DOWN_START = 3 # 카운트 다운 시작 값
 
     REC_FRAME = 75 # 녹화할 총 frame 수
@@ -308,12 +313,18 @@ async def loop():
     cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
 
     # 새로운 해상도 설정
-    width = 360
-    # height = 288
-    height = 320 
+    width = 1280 
+    height = 1280 
+    # height = 320 
     fps = 25
+
+    # 웹캠의 입력 해상도 조정
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
+    # NDI Sending Res
+    video_frame.xres = 1280
+    video_frame.yres = 1280
 
     # 창을 생성합니다.
     cv2.namedWindow('Camera Feed', cv2.WINDOW_GUI_NORMAL)
@@ -340,11 +351,19 @@ async def loop():
         if not ret:
             break
 
+        # # 카메라 프레임 width / height 확인
+        # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        # # 가져온 너비와 높이 출력
+        # print("Width:", width)
+        # print("Height:", height)
+
 
         # 카메라 영상 비율 조정 --> 윈도우의 비율도 결정됨
         # 영상의 가로와 세로 중 작은 값을 구함
         min_dimension = min(frame.shape[0], frame.shape[1])
-        # print(min_dimension)
+        # print(f'dimension: {min_dimension}') # width, height 중 작은 것
 
         # 중앙 부분을 잘라내어 1:1 비율로 만듦
         start_x = (frame.shape[1] - min_dimension) // 2
@@ -415,8 +434,8 @@ async def loop():
                 # 카운트 다운 숫자 표시하기
                 text = str(count_down)
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                font_scale = 1
-                font_thickness = 2
+                font_scale = VIEW_SCALE * 1.5
+                font_thickness = 2 * VIEW_SCALE
                 text_color = (0, 0, 255)  # BGR format
 
                 # 텍스트 크기 얻기
@@ -441,7 +460,7 @@ async def loop():
                 # print(f'pt1: {pt1} / pt2: {pt2}')
 
                 rect_color = (0, 255, 0)  # BGR format (green)
-                rect_thickness = 1
+                rect_thickness = 1 * VIEW_SCALE
                 cv2.rectangle(frame, pt1, pt2, rect_color, rect_thickness)
 
 
@@ -454,9 +473,9 @@ async def loop():
                 if is_wait_mode == True: # 관객이 사라지면
                     print('녹화 중단!!')
 
-                    # record가 끝나면 현재 시간을 OSC로 전송
+                    # record가 중단되면 시간을 OSC로 전송 --> 이 때는 영상 및 소리 재생 없음
                     timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
-                    send_osc_message(OSC_ADDR, OSC_PORT, "/record_end", timestamp)
+                    send_osc_message(OSC_ADDR, OSC_PORT, "/record_interrupt", timestamp)
 
                     mov_writer.release() # 파일 저장
                     mov_writer = None
@@ -542,19 +561,21 @@ async def loop():
             # 텍스트 추가 (현재 녹화 중임을 알려주는 메시지)
             text = 'Recording...'
             font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.8 
-            font_thickness = 2
-            text_position = (10, 25)
+            font_scale = VIEW_SCALE
+            # print(f'font_scale: {font_scale}˙')
+            font_thickness = 4 * VIEW_SCALE
+            text_position = (10, 25 * font_scale)
             text_color = (0, 0, 255)  # BGR format
             cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
             # 화면 왼쪽에서 오른쪽으로 '.' 문자 채우기
-            font_scale = 1 
-            elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
+            # font_scale = 1 
+            # elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
             MAX_DOT_NUM = 36
             dots = min(int(frame_count * MAX_DOT_NUM / 75), MAX_DOT_NUM)
-            progress_text = '.' * dots
-            cv2.putText(frame, progress_text, (0, 40), font, font_scale, text_color, font_thickness, cv2.LINE_AA)
+            progress_text = '.' * dots 
+            font_thickness = 3 * VIEW_SCALE
+            cv2.putText(frame, progress_text, (-5, text_position[1] + 40), font, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
             # 중심 좌표와 크기
             center = (frame.shape[1] // 2, frame.shape[0] // 2)  # 이미지 중심 좌표
@@ -568,7 +589,7 @@ async def loop():
             # print(f'pt1: {pt1} / pt2: {pt2}')
 
             rect_color = (0, 255, 0)  # BGR format (green)
-            rect_thickness = 2
+            rect_thickness = 4 * VIEW_SCALE
             cv2.rectangle(frame, pt1, pt2, rect_color, rect_thickness)
 
 
@@ -598,7 +619,8 @@ async def loop():
             background_image_resized[start_y:end_y, start_x:end_x] = frame_on_image
             frame_with_image = background_image_resized
             # frame_with_image_and_subtitle = None
-            cv2.imshow('Camera Feed', cv2.resize(frame_with_image, (width * 2, height * 2))) # 화면이 보이는 비율, 녹화와 관계 없음
+            frame_with_image = cv2.resize(frame_with_image, (width * VIEW_SCALE, height * VIEW_SCALE)) 
+            cv2.imshow('Camera Feed', frame_with_image) # 화면이 보이는 비율, 녹화와 관계 없음
 
             # cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
