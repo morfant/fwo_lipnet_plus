@@ -3,14 +3,14 @@
 		"fileversion" : 1,
 		"appversion" : 		{
 			"major" : 8,
-			"minor" : 3,
-			"revision" : 3,
+			"minor" : 6,
+			"revision" : 1,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 494.0, 104.0, 1282.0, 885.0 ],
+		"rect" : [ 600.0, 87.0, 1132.0, 885.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -39,6 +39,43 @@
 		"subpatcher_template" : "",
 		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-9",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 206.0, 581.0, 96.0, 22.0 ],
+					"presentation_linecount" : 2,
+					"text" : "/is_play_mode 1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-10",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 93.0, 581.0, 96.0, 22.0 ],
+					"presentation_linecount" : 2,
+					"text" : "/is_play_mode 0"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-12",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 93.0, 630.0, 135.0, 22.0 ],
+					"text" : "udpsend localhost 1337"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-47",
 					"linecount" : 4,
@@ -94,7 +131,6 @@
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 627.5, 304.0, 146.0, 21.0 ],
-					"presentation_linecount" : 4,
 					"text" : "OSC를 통해 오는 경로"
 				}
 
@@ -167,7 +203,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 467.0, 422.0, 316.0, 35.0 ],
-					"text" : "/Users/giy/Projects/fwo_lipnet_plus/archive/captured_frames_240211_174558/audio.wav"
+					"text" : "/Users/baggeunsu/fwo_lipnet_plus/archive/captured_frames_240214_140438/audio.wav"
 				}
 
 			}
@@ -178,8 +214,8 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 389.5, 330.0, 198.0, 22.0 ],
-					"text" : "/Users/giy/Projects/fwo_lipnet_plus/"
+					"patching_rect" : [ 389.5, 330.0, 195.0, 22.0 ],
+					"text" : "/Users/baggeunsu/fwo_lipnet_plus/"
 				}
 
 			}
@@ -281,7 +317,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 998.0, 201.0, 112.0, 22.0 ],
-					"text" : "240211_174558"
+					"text" : "240214_140438"
 				}
 
 			}
@@ -340,7 +376,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 1139.0, 201.0, 112.0, 22.0 ],
-					"text" : "240211_174603"
+					"text" : "240214_140443"
 				}
 
 			}
@@ -364,7 +400,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 610.5, 330.0, 239.0, 22.0 ],
-					"text" : "archive/captured_frames_240211_174558/"
+					"text" : "archive/captured_frames_240214_140438/"
 				}
 
 			}
@@ -437,6 +473,13 @@
 					"midpoints" : [ 620.0, 153.0, 1007.5, 153.0 ],
 					"order" : 1,
 					"source" : [ "obj-1", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-12", 0 ],
+					"source" : [ "obj-10", 0 ]
 				}
 
 			}
@@ -628,6 +671,13 @@
 					"destination" : [ "obj-6", 1 ],
 					"order" : 0,
 					"source" : [ "obj-8", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-12", 0 ],
+					"source" : [ "obj-9", 0 ]
 				}
 
 			}

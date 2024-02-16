@@ -21,10 +21,13 @@ import NDIlib as ndi
 
 # 상태를 나타내는 global 변수들
 is_wait_mode = False # 1: True / 0: False 
+is_guide_mode = True # 녹화 시작 전 안내 영상 송출
 is_count_mode = False 
 is_rec_mode = False 
+is_play_mode = False # 녹화된 사진과 오디오가 재생되고 있는지
 is_prediction_done = False
 
+start_time = None
 mov_writer = None
 
 
@@ -36,17 +39,26 @@ ndi_send = ndi.send_create(send_settings)
 video_frame = ndi.VideoFrameV2()
 
 
-
 # OSC receive handler
-def mode_handler(address, *args):
+def wait_mode_handler(address, *args):
     global is_wait_mode
-    print(f"{address}: {args}")
+    print(f"wait_mode_handler: {address}: {args}")
     is_wait_mode = bool(args[0])
     # print(is_wait_mode)
 
+def play_mode_handler(address, *args):
+    global is_play_mode, is_count_mode, start_time
+    print(f"play_mode_handler: {address}: {args}")
+    is_play_mode = bool(args[0])
+    if is_play_mode == False:
+        is_count_mode = True
+        start_time = cv2.getTickCount()
+    # print(is_play_mode)
+
 # OSC Server(Async) setup
 dispatcher = Dispatcher()
-dispatcher.map("/is_wait_mode", mode_handler) # Address pattern, handler function
+dispatcher.map("/is_wait_mode", wait_mode_handler) # Address pattern, handler function
+dispatcher.map("/is_play_mode", play_mode_handler) # Address pattern, handler function
 ip = "127.0.0.1" # receiving ip
 port = 1337 # receiving port
 
@@ -77,9 +89,58 @@ def putTextKor(src, text, pos=(10, 200), font_size=20, font_color=(255, 255, 255
     return np.array(img_pil)
 
 
+# 안내 영상 파일 재생을 위한 함수
+async def play_guide_video_in_existing_window(file_path, window_name, loop=False):
+    global is_wait_mode, is_guide_mode, is_rec_mode, is_count_mode, is_prediction_done
+    # is_key_pressed = False
+    cap_mov = cv2.VideoCapture(file_path)
+
+    if not cap_mov.isOpened():
+        print("Error: Couldn't open video file.")
+        return
+
+    while True:
+        ret, frame = cap_mov.read()
+
+        if ret:
+            # NDI send
+            img = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+            video_frame.data = img
+            video_frame.FourCC = ndi.FOURCC_VIDEO_TYPE_BGRX
+            ndi.send_send_video_v2(ndi_send, video_frame)
+
+        if not ret:
+            if loop:
+                cap_mov.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                continue
+            else:
+                # is_guide_mode = False
+                # is_count_mode = True
+                break
+
+        cv2.imshow(window_name, frame)
+
+        # TEST
+        # 'g' 키를 통해 대기모드가 종료될 때
+        key = cv2.waitKey(25)
+        if key == ord('g'):
+            # is_key_pressed = True
+            is_wait_mode = False 
+            is_rec_mode = False
+            is_count_mode = False
+            is_guide_mode = False
+            is_prediction_done = False
+            break
+
+        await asyncio.sleep(0.01)
+
+    cap_mov.release()
+
+
+
 # 대기모드시 영상파일 재생을 위한 함수
-async def play_video_in_existing_window(file_path, window_name, loop=True):
-    global is_wait_mode, is_rec_mode, is_count_mode, is_prediction_done
+async def play_wait_video_in_existing_window(file_path, window_name, loop=True):
+    global is_wait_mode, is_guide_mode, is_rec_mode, is_count_mode, is_prediction_done
     is_key_pressed = False
     cap_mov = cv2.VideoCapture(file_path)
 
@@ -90,11 +151,12 @@ async def play_video_in_existing_window(file_path, window_name, loop=True):
     while True:
         ret, frame = cap_mov.read()
 
-        # NDI send
-        img = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
-        video_frame.data = img
-        video_frame.FourCC = ndi.FOURCC_VIDEO_TYPE_BGRX
-        ndi.send_send_video_v2(ndi_send, video_frame)
+        if ret:
+            # NDI send
+            img = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+            video_frame.data = img
+            video_frame.FourCC = ndi.FOURCC_VIDEO_TYPE_BGRX
+            ndi.send_send_video_v2(ndi_send, video_frame)
 
         if not ret:
             if loop:
@@ -111,6 +173,7 @@ async def play_video_in_existing_window(file_path, window_name, loop=True):
             is_rec_mode = False
             is_count_mode = False
             is_prediction_done = False
+            is_guide_mode = True
             break
 
         # 'm' 키를 통해 대기모드가 종료될 때
@@ -121,6 +184,7 @@ async def play_video_in_existing_window(file_path, window_name, loop=True):
             is_rec_mode = False
             is_count_mode = False
             is_prediction_done = False
+            is_guide_mode = True
             break
 
         await asyncio.sleep(0.01)
@@ -227,13 +291,14 @@ async def loop():
     OSC_PORT = 30000
 
     # 대기 화면에서 재생될 영상
-    WAIT_MOVIE = './waiting.mov'
+    WAIT_MOVIE = './waiting_1080.mov'
     REC_FILE = './camout/output.mp4' # 영상 파일 저장 경로
     SAVE_INTERVAL = 5 # frame 이미지 저장 사이 간격
 
+    GUIDE_MOVIE = './guide.mov'
+
     frame_count = 0
     predict_rslt = ""
-    start_time = None
 
     # lip read
     lipRead = LipRead()
@@ -259,11 +324,10 @@ async def loop():
     # 비디오 라이터 생성
     fourcc = cv2.VideoWriter_fourcc(*'MP4V')
 
-
     # 바탕 이미지 불러오기
     background_image = cv2.imread('./background_image.png')
 
-    global is_wait_mode, is_rec_mode, is_count_mode, is_prediction_done, mov_writer
+    global is_wait_mode, is_guide_mode, is_rec_mode, is_play_mode, is_count_mode, is_prediction_done, mov_writer, start_time
     while True:
         
         # print(f'is_wait_mode: {is_wait_mode}')
@@ -290,17 +354,21 @@ async def loop():
 
         # print(f'sx: {start_x} / sy: {start_y} / ex: {end_x} / ey: {end_y}')
         frame = frame[start_y:end_y, start_x:end_x]
+        width = height = frame.shape[1]
+        frame = cv2.resize(frame, (width, height)) # 영상 크기 조절
+        frame = cv2.flip(frame, 1) # 좌우 반전 적용
 
-        width = height = frame.shape[1] # 288
 
-        # 영상 크기 조절
-        frame = cv2.resize(frame, (width, height))
+        key = cv2.waitKey(1) & 0xFF # key 입력 받기
 
-        # 좌우 반전 적용
-        frame = cv2.flip(frame, 1)
-
-        # key 입력 받기
-        key = cv2.waitKey(1) & 0xFF
+        # countdown 전에 안내 영상 내보내기        
+        if is_guide_mode == True and is_play_mode == False:
+            await play_guide_video_in_existing_window(GUIDE_MOVIE, 'Camera Feed')
+            is_guide_mode = False
+            is_count_mode = True
+            start_time = cv2.getTickCount()
+            print(f'start_time!!: {start_time}')
+            
 
         # 'c' 키를 누르면 count 모드로 전환
         if key == ord('c'):
@@ -313,7 +381,7 @@ async def loop():
 
 
         # 카운트 모드일 때 count down 숫자 표시
-        if is_count_mode == True:
+        if is_count_mode == True and is_play_mode == False:
             frame_count = 0 # frame_count 초기화
             is_prediction_done = False
             elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
@@ -420,6 +488,8 @@ async def loop():
                     # print(predict_rslt)
                     # predict_rslt = lipRead.translate(rslt)
 
+                    '''
+                    # TEST
                     # 인식된 입모양 plot 
                     if len(calc_frames) == 75:
 
@@ -439,9 +509,11 @@ async def loop():
 
                         # gif 애니메이션 저장
                         imageio.mimsave('./camout/animation.gif', (calc_frames * 255).numpy().astype('uint8').squeeze(), fps=fps)
+                    '''
 
 
                     is_prediction_done = True
+                    is_play_mode = True # 녹화된 영상과 음성이 재생중이다 --> 새로운 녹화를 시작하지 않는다
                     start_time = time.time()
 
                 
@@ -563,7 +635,7 @@ async def loop():
 
         # 대기모드일 때 동영상 재생
         if is_wait_mode == True:
-            await play_video_in_existing_window(WAIT_MOVIE, 'Camera Feed')
+            await play_wait_video_in_existing_window(WAIT_MOVIE, 'Camera Feed')
 
         # 'esc' 키를 누르면 프로그램 종료합니다.
         if key == 27:
