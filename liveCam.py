@@ -22,6 +22,7 @@ from lip_read import LipRead
 from lipnet.lipreading.videos import Video
 
 BASE_PATH = "/Users/baggeunsu/fwo_lipnet_plus"
+STORAGE_PATH = '/Volumes/Public/image_server/'
 
 VIEW_SCALE = 1
 
@@ -250,9 +251,9 @@ def create_output_directory():
     # kor_name = f'{year}년_{month}월_{day}일_{hour}시_{minute}분_{second}초'
     # kor_name = f'{year}_{month}_{day}_{hour}_{minute}_{second}'
     kor_name = f'{year}_{month}_{day}_{hour}_{minute}_{second}'
-    print(kor_name)
+    # print(kor_name)
 
-    output_directory = os.path.join('/Volumes/roads22/image_server/', f'{kor_name}')
+    output_directory = os.path.join(STORAGE_PATH, f'{kor_name}')
 
 
 
@@ -458,7 +459,6 @@ async def loop():
                 
                 # def list_subdirectories(folder_path):
                 # 주어진 폴더 경로에서 하위 폴더들의 이름을 가져옴
-                STORAGE_PATH = '/Volumes/roads22/image_server/'
                 subdirectories = [name for name in os.listdir(STORAGE_PATH)
                 if os.path.isdir(os.path.join(STORAGE_PATH, name))]
                     # return subdirectories
