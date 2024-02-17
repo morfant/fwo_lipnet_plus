@@ -18,8 +18,9 @@ import asyncio
 
 import NDIlib as ndi
 
+BASE_PATH = "/Users/baggeunsu/fwo_lipnet_plus"
 
-VIEW_SCALE = 2
+VIEW_SCALE = 1
 
 # 상태를 나타내는 global 변수들
 is_wait_mode = False # 1: True / 0: False 
@@ -69,7 +70,7 @@ port = 1337 # receiving port
 def putTextKor(src, text, pos=(10, 140), font_size=80, font_color=(255, 255, 255)) :
     global VIEW_SCALE
 
-    FONT_PATH = './IBM_Plex_Sans_KR/IBMPlexSansKR-Regular.ttf'
+    FONT_PATH = BASE_PATH + '/IBM_Plex_Sans_KR/IBMPlexSansKR-Regular.ttf'
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = VIEW_SCALE * 3 
     font_thickness = 3
@@ -224,7 +225,7 @@ def create_output_directory():
 
     # 현재 날짜와 시간을 이용하여 디렉토리 이름 생성
     timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
-    output_directory = os.path.join('archive', f'captured_frames_{timestamp}')
+    output_directory = os.path.join('/Volumes/roads22/server_test/', f'{timestamp}')
 
     # 디렉토리 생성
     os.makedirs(output_directory, exist_ok=True)
@@ -254,7 +255,7 @@ def load_frames_from_video(filepath:str):
 
     # print ("Processing: {}".format(filepath))
 
-    FACE_PREDICTOR_PATH = './predictors/shape_predictor_68_face_landmarks.dat'
+    FACE_PREDICTOR_PATH = BASE_PATH + '/predictors/shape_predictor_68_face_landmarks.dat'
     video = Video(vtype='face', face_predictor_path=FACE_PREDICTOR_PATH).from_video(filepath)    
     video_i = ((video.mouth - np.min(video.mouth)) / (np.max(video.mouth) - np.min(video.mouth)) * 255).astype(np.uint8)
     # video_i = (video.mouth * 255).astype(np.uint8)    
@@ -296,11 +297,11 @@ async def loop():
     OSC_PORT = 30000
 
     # 대기 화면에서 재생될 영상
-    WAIT_MOVIE = './waiting_1080.mov'
-    REC_FILE = './camout/output.mp4' # 영상 파일 저장 경로
+    WAIT_MOVIE = BASE_PATH + '/waiting_960.mp4'
+    REC_FILE = BASE_PATH + '/camout/output.mp4' # 영상 파일 저장 경로
     SAVE_INTERVAL = 5 # frame 이미지 저장 사이 간격
 
-    GUIDE_MOVIE = './guide.mov'
+    GUIDE_MOVIE = BASE_PATH + '/guide.mov'
 
     frame_count = 0
     predict_rslt = ""
@@ -336,7 +337,7 @@ async def loop():
     fourcc = cv2.VideoWriter_fourcc(*'MP4V')
 
     # 바탕 이미지 불러오기
-    background_image = cv2.imread('./background_image.png')
+    background_image = cv2.imread(BASE_PATH + '/background_image.png')
 
     global is_wait_mode, is_guide_mode, is_rec_mode, is_play_mode, is_count_mode, is_prediction_done, mov_writer, start_time
     while True:
@@ -545,7 +546,8 @@ async def loop():
 
                     # 이미지 파일 경로 설정
                     formatted_number = f"{frame_count:03d}"
-                    image_path = os.path.join(output_directory, f'mouth_{formatted_number}.png')
+                    index_number = frame_count // SAVE_INTERVAL + 1
+                    image_path = os.path.join(output_directory, f'{index_number}.png')
 
                     # 이미지 저장
                     cv2.imwrite(image_path, frame)

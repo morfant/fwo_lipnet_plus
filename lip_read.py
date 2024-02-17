@@ -7,7 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, E
 
 from chatgpt import ask_chatGPT
 
-MODEL_PATH = './models/kor_56/checkpoint'
+MODEL_PATH = '/Users/baggeunsu/fwo_lipnet_plus/models/kor_56/checkpoint'
 
 
 class LipRead:
