@@ -1,22 +1,25 @@
-import cv2
-import imageio 
+import asyncio
+import errno
+import fnmatch
+import os
+import sys
 import time
-from lipnet.lipreading.videos import Video
-import os, fnmatch, sys, errno  
-from skimage import io
+from datetime import datetime
+
+import cv2
+import imageio
 import numpy as np
 import tensorflow as tf
 from matplotlib import pyplot as plt
-from datetime import datetime
-from PIL import ImageFont, ImageDraw, Image
-from lip_read import LipRead
-
-from pythonosc import udp_client, osc_server
-from pythonosc.osc_server import AsyncIOOSCUDPServer
+from PIL import Image, ImageDraw, ImageFont
+from pythonosc import osc_server, udp_client
 from pythonosc.dispatcher import Dispatcher
-import asyncio
+from pythonosc.osc_server import AsyncIOOSCUDPServer
+from skimage import io
 
 import NDIlib as ndi
+from lip_read import LipRead
+from lipnet.lipreading.videos import Video
 
 BASE_PATH = "/Users/baggeunsu/fwo_lipnet_plus"
 
@@ -41,6 +44,14 @@ send_settings.ndi_name = 'ndi-python'
 ndi_send = ndi.send_create(send_settings)
 video_frame = ndi.VideoFrameV2()
 
+
+def sort_folders_by_datetime(folder_names):
+    # 날짜와 시간을 기준으로 폴더 이름들을 정렬
+    sorted_folders = sorted(folder_names, key=lambda x: datetime.strptime(x, '%y_%m_%d_%H_%M_%S'))
+    # sorted_folders = sorted(folder_names, key=lambda x: datetime.strptime(x, '%y %m %d %H %M %S'))
+    # sorted_folders = sorted(folder_names, key=lambda x: datetime.strptime(x, '%y년_%m월_%d일_%H시_%M분_%S초'))
+
+    return sorted_folders
 
 
 # OSC receive handler
@@ -224,8 +235,26 @@ def send_osc_message(osc_server_ip, osc_server_port, osc_address, osc_message):
 def create_output_directory():
 
     # 현재 날짜와 시간을 이용하여 디렉토리 이름 생성
-    timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
-    output_directory = os.path.join('/Volumes/roads22/server_test/', f'{timestamp}')
+    # timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
+    current_datetime = datetime.now()
+
+
+    # 년, 월, 일, 시간, 분, 초를 변수로 추출
+    year = current_datetime.strftime('%y')
+    month = current_datetime.strftime('%m')
+    day = current_datetime.strftime('%d')
+    hour = current_datetime.strftime('%H')
+    minute = current_datetime.strftime('%M')
+    second = current_datetime.strftime('%S')
+
+    # kor_name = f'{year}년_{month}월_{day}일_{hour}시_{minute}분_{second}초'
+    # kor_name = f'{year}_{month}_{day}_{hour}_{minute}_{second}'
+    kor_name = f'{year}_{month}_{day}_{hour}_{minute}_{second}'
+    print(kor_name)
+
+    output_directory = os.path.join('/Volumes/roads22/image_server/', f'{kor_name}')
+
+
 
     # 디렉토리 생성
     os.makedirs(output_directory, exist_ok=True)
@@ -293,7 +322,8 @@ async def loop():
     REC_FRAME = 75 # 녹화할 총 frame 수
     SUBTITLE_DUR = 5  # 자막이 표시될 시간 (초)
 
-    OSC_ADDR = "127.0.0.1"
+    # OSC_ADDR = "127.0.0.1"
+    OSC_ADDR = "192.168.50.71"
     OSC_PORT = 30000
 
     # 대기 화면에서 재생될 영상
@@ -424,9 +454,27 @@ async def loop():
                 # 다음 프레임 부터 rec_mode로 넘어감
                 is_count_mode = False 
                 is_rec_mode = True 
+                
+                
+                # def list_subdirectories(folder_path):
+                # 주어진 폴더 경로에서 하위 폴더들의 이름을 가져옴
+                STORAGE_PATH = '/Volumes/roads22/image_server/'
+                subdirectories = [name for name in os.listdir(STORAGE_PATH)
+                if os.path.isdir(os.path.join(STORAGE_PATH, name))]
+                    # return subdirectories
+                sorted_dir_list = sort_folders_by_datetime(subdirectories)
+
+                print(subdirectories)
+                print(sorted_dir_list)
+                # output_string = input_string.replace('_', ' ')
+                no_underbar_list = [name.replace('_', ' ') for name in sorted_dir_list]
+                send_osc_message(OSC_ADDR, OSC_PORT, "/folder_names", no_underbar_list)
 
                 timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
                 send_osc_message(OSC_ADDR, OSC_PORT, "/record_start", timestamp)
+
+                
+                
 
 
             # 카운트다운이 진행 중일 때
@@ -547,7 +595,7 @@ async def loop():
                     # 이미지 파일 경로 설정
                     formatted_number = f"{frame_count:03d}"
                     index_number = frame_count // SAVE_INTERVAL + 1
-                    image_path = os.path.join(output_directory, f'{index_number}.png')
+                    image_path = os.path.join(output_directory, f'{index_number:02d}.png')
 
                     # 이미지 저장
                     cv2.imwrite(image_path, frame)

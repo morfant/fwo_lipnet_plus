@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 356.0, 207.0, 1473.0, 885.0 ],
+		"rect" : [ 940.0, 110.0, 1473.0, 885.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -39,6 +39,72 @@
 		"subpatcher_template" : "",
 		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-25",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 1013.0, 493.0, 122.0, 22.0 ],
+					"text" : "02_03_05_04_04_01"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-22",
+					"maxclass" : "button",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "bang" ],
+					"parameter_enable" : 0,
+					"patching_rect" : [ 931.0, 492.0, 24.0, 24.0 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-19",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 934.0, 589.0, 74.0, 22.0 ],
+					"saved_object_attributes" : 					{
+						"filename" : "str_split.js",
+						"parameter_enable" : 0
+					}
+,
+					"text" : "js str_split.js"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-20",
+					"linecount" : 8,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 98.0, 334.0, 241.0, 116.0 ],
+					"text" : "240217_122351 240217_134621 240217_140853 240217_143205 240217_143455 240217_145538 240217_150704 240217_150842 240217_151020 240217_151117 240217_151359 240217_155809 240217_155943 240217_160745 240217_161105 240217_161458"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-18",
+					"maxclass" : "newobj",
+					"numinlets" : 2,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"patching_rect" : [ 384.0, 160.0, 115.0, 22.0 ],
+					"text" : "route /folder_names"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-13",
 					"maxclass" : "message",
@@ -70,7 +136,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 206.0, 581.0, 96.0, 22.0 ],
-					"presentation_linecount" : 2,
 					"text" : "/is_play_mode 1"
 				}
 
@@ -83,7 +148,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 93.0, 581.0, 96.0, 22.0 ],
-					"presentation_linecount" : 2,
 					"text" : "/is_play_mode 0"
 				}
 
@@ -154,7 +218,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 627.5, 304.0, 146.0, 21.0 ],
+					"patching_rect" : [ 389.5, 277.0, 146.0, 21.0 ],
 					"text" : "OSC를 통해 오는 경로"
 				}
 
@@ -190,7 +254,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 861.0, 330.0, 63.0, 22.0 ],
+					"patching_rect" : [ 651.5, 322.0, 63.0, 22.0 ],
 					"text" : "audio.wav"
 				}
 
@@ -199,47 +263,23 @@
 				"box" : 				{
 					"id" : "obj-34",
 					"maxclass" : "newobj",
-					"numinlets" : 3,
+					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 389.5, 381.0, 95.0, 22.0 ],
-					"text" : "sprintf %s%s%s"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-26",
-					"maxclass" : "comment",
-					"numinlets" : 1,
-					"numoutlets" : 0,
-					"patching_rect" : [ 411.5, 304.0, 52.0, 21.0 ],
-					"text" : "절대경로"
+					"patching_rect" : [ 389.5, 381.0, 78.0, 22.0 ],
+					"text" : "sprintf %s%s"
 				}
 
 			}
 , 			{
 				"box" : 				{
 					"id" : "obj-24",
-					"linecount" : 2,
 					"maxclass" : "message",
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 467.0, 422.0, 316.0, 35.0 ],
-					"text" : "/Users/baggeunsu/fwo_lipnet_plus/archive/captured_frames_240216_214427/audio.wav"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-11",
-					"maxclass" : "message",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 389.5, 330.0, 195.0, 22.0 ],
-					"text" : "/Users/baggeunsu/fwo_lipnet_plus/"
+					"patching_rect" : [ 467.0, 422.0, 316.0, 22.0 ],
+					"text" : "/Volumes/roads22/server_test/240217_161458/audio.wav"
 				}
 
 			}
@@ -341,7 +381,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 998.0, 201.0, 112.0, 22.0 ],
-					"text" : "240216_214427"
+					"text" : "240217_161458"
 				}
 
 			}
@@ -400,7 +440,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 1139.0, 201.0, 112.0, 22.0 ],
-					"text" : "240216_214433"
+					"text" : "240217_161505"
 				}
 
 			}
@@ -419,12 +459,13 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-16",
+					"linecount" : 2,
 					"maxclass" : "message",
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 610.5, 330.0, 239.0, 22.0 ],
-					"text" : "archive/captured_frames_240216_214427/"
+					"patching_rect" : [ 389.5, 309.0, 239.0, 35.0 ],
+					"text" : "/Volumes/roads22/server_test/240217_161458/"
 				}
 
 			}
@@ -492,6 +533,14 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-18", 0 ],
+					"order" : 4,
+					"source" : [ "obj-1", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-3", 0 ],
 					"midpoints" : [ 620.0, 153.0, 1148.5, 153.0 ],
 					"order" : 1,
@@ -517,24 +566,8 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-34", 0 ],
-					"source" : [ "obj-11", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-11", 0 ],
-					"midpoints" : [ 620.0, 278.0, 399.0, 278.0 ],
-					"order" : 3,
-					"source" : [ "obj-14", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
 					"destination" : [ "obj-16", 1 ],
-					"midpoints" : [ 620.0, 279.0, 840.0, 279.0 ],
+					"midpoints" : [ 620.0, 279.0, 619.0, 279.0 ],
 					"order" : 1,
 					"source" : [ "obj-14", 0 ]
 				}
@@ -543,7 +576,7 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-16", 0 ],
-					"midpoints" : [ 620.0, 324.0, 620.0, 324.0 ],
+					"midpoints" : [ 620.0, 324.0, 399.0, 324.0 ],
 					"order" : 2,
 					"source" : [ "obj-14", 0 ]
 				}
@@ -552,7 +585,7 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-36", 0 ],
-					"midpoints" : [ 620.0, 279.0, 870.0, 279.0, 870.0, 321.0, 870.5, 321.0 ],
+					"midpoints" : [ 620.0, 279.0, 660.0, 279.0, 660.0, 304.0, 661.0, 304.0 ],
 					"order" : 0,
 					"source" : [ "obj-14", 0 ]
 				}
@@ -567,9 +600,15 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-34", 1 ],
-					"midpoints" : [ 620.0, 366.0, 437.0, 366.0 ],
+					"destination" : [ "obj-34", 0 ],
 					"source" : [ "obj-16", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-20", 1 ],
+					"source" : [ "obj-18", 0 ]
 				}
 
 			}
@@ -582,8 +621,22 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-19", 0 ],
+					"source" : [ "obj-22", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-32", 0 ],
 					"source" : [ "obj-24", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-19", 0 ],
+					"source" : [ "obj-25", 0 ]
 				}
 
 			}
@@ -670,8 +723,7 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-34", 2 ],
-					"midpoints" : [ 870.5, 366.0, 475.0, 366.0 ],
+					"destination" : [ "obj-34", 1 ],
 					"source" : [ "obj-36", 0 ]
 				}
 
@@ -721,7 +773,14 @@
 
 			}
  ],
-		"dependency_cache" : [  ],
+		"dependency_cache" : [ 			{
+				"name" : "str_split.js",
+				"bootpath" : "~/fwo_lipnet_plus/max_patch",
+				"patcherrelativepath" : ".",
+				"type" : "TEXT",
+				"implicit" : 1
+			}
+ ],
 		"autosave" : 0
 	}
 

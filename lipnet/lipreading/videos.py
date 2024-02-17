@@ -4,6 +4,9 @@ from keras import backend as K
 from scipy import ndimage
 # from scipy import resize
 from skimage.transform import resize
+import skvideo
+path = "/opt/homebrew/bin"
+skvideo.setFFmpegPath(path)
 import skvideo.io
 import dlib
 from lipnet.lipreading.aligns import Align
