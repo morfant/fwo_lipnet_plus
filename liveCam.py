@@ -22,7 +22,9 @@ from lip_read import LipRead
 from lipnet.lipreading.videos import Video
 
 BASE_PATH = "/Users/baggeunsu/fwo_lipnet_plus"
-STORAGE_PATH = '/Volumes/Public/image_server/'
+# STORAGE_PATH = '/Volumes/Public/image_server/'
+STORAGE_PATH = '/Users/NetworkFolder/image_server'
+
 
 VIEW_SCALE = 1
 
@@ -255,10 +257,12 @@ def create_output_directory():
 
     output_directory = os.path.join(STORAGE_PATH, f'{kor_name}')
 
-
-
-    # 디렉토리 생성
-    os.makedirs(output_directory, exist_ok=True)
+    try:
+        # 디렉토리 생성
+        os.makedirs(output_directory, exist_ok=True)
+    except PermissionError as e:
+        print(f"Error creating directory: {e}")
+        # 여기에 추가적인 에러 처리 로직을 작성할 수 있음
 
     return output_directory
 
