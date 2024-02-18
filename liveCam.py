@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 
 import cv2
+import pygame
 import imageio
 import numpy as np
 import tensorflow as tf
@@ -21,16 +22,28 @@ import NDIlib as ndi
 from lip_read import LipRead
 from lipnet.lipreading.videos import Video
 
-BASE_PATH = "/Users/baggeunsu/fwo_lipnet_plus"
+from video_with_audio import WithMediaPlayer
+
+# BASE_PATH = "/Users/baggeunsu/fwo_lipnet_plus" # 맥미니에서 실행할 때
+BASE_PATH = "/Users/giy/Projects/fwo_lipnet_plus" # 노트북에서 실행할 때
 # STORAGE_PATH = '/Volumes/Public/image_server/'
 STORAGE_PATH = '/Users/NetworkFolder/image_server'
 
+GUIDE_MOVIE = BASE_PATH + '/videofiles/guide.mp4'
+# GUIDE_AUDIO = BASE_PATH + '/videofiles/guide_44.mp3'
+# GUIDE_AUDIO = BASE_PATH + '/videofiles/guide_43.mp3'
+GUIDE_AUDIO = BASE_PATH + '/videofiles/guide.mp3'
+
+pygame.init()
+pygame.mixer.init()
+pygame.mixer.music.load(GUIDE_AUDIO)
 
 VIEW_SCALE = 1
+ASYNC_AWAIT = 0.00001
 
 # 상태를 나타내는 global 변수들
 is_wait_mode = False # 1: True / 0: False 
-is_guide_mode = False # 녹화 시작 전 안내 영상 송출
+is_guide_mode = True # 녹화 시작 전 안내 영상 송출
 is_count_mode = False 
 is_rec_mode = False 
 is_play_mode = False # 녹화된 사진과 오디오가 재생되고 있는지
@@ -38,6 +51,17 @@ is_prediction_done = False
 
 start_time = None
 mov_writer = None
+
+# OSC
+# Receive
+RECVIVING_IP = "127.0.0.1" # receiving ip
+RECVIVING_PORT = 1337 # receiving port
+
+# Send
+OSC_ADDR = "127.0.0.1"
+# OSC_ADDR = "192.168.50.71"
+OSC_PORT = 30000
+
 
 
 
@@ -77,8 +101,6 @@ def play_mode_handler(address, *args):
 dispatcher = Dispatcher()
 dispatcher.map("/is_wait_mode", wait_mode_handler) # Address pattern, handler function
 dispatcher.map("/is_play_mode", play_mode_handler) # Address pattern, handler function
-ip = "127.0.0.1" # receiving ip
-port = 1337 # receiving port
 
 
 def putTextKor(src, text, pos=(10, 140), font_size=80, font_color=(255, 255, 255)) :
@@ -112,6 +134,10 @@ def putTextKor(src, text, pos=(10, 140), font_size=80, font_color=(255, 255, 255
 async def play_guide_video_in_existing_window(file_path, window_name, loop=False):
     global is_wait_mode, is_guide_mode, is_rec_mode, is_count_mode, is_prediction_done
     # is_key_pressed = False
+
+    # 오디오 재생
+    pygame.mixer.music.play()
+
     cap_mov = cv2.VideoCapture(file_path)
 
     if not cap_mov.isOpened():
@@ -119,6 +145,7 @@ async def play_guide_video_in_existing_window(file_path, window_name, loop=False
         return
 
     while True:
+        
         ret, frame = cap_mov.read()
 
         if ret:
@@ -129,19 +156,15 @@ async def play_guide_video_in_existing_window(file_path, window_name, loop=False
             ndi.send_send_video_v2(ndi_send, video_frame)
 
         if not ret:
-            if loop:
-                cap_mov.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                continue
-            else:
-                # is_guide_mode = False
-                # is_count_mode = True
-                break
+            is_guide_mode = False
+            is_count_mode = True
+            break
 
         cv2.imshow(window_name, frame)
 
         # TEST
         # 'g' 키를 통해 대기모드가 종료될 때
-        key = cv2.waitKey(25)
+        key = cv2.waitKey(1) # 영상 재생의 fps 에 결정적 영향을 준다. 영상과 소리 사이의 싱크를 맞추려면 최소화 해야 한다
         if key == ord('g'):
             # is_key_pressed = True
             is_wait_mode = False 
@@ -151,7 +174,7 @@ async def play_guide_video_in_existing_window(file_path, window_name, loop=False
             is_prediction_done = False
             break
 
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(ASYNC_AWAIT)
 
     cap_mov.release()
 
@@ -206,7 +229,7 @@ async def play_wait_video_in_existing_window(file_path, window_name, loop=True):
             is_guide_mode = True
             break
 
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(ASYNC_AWAIT)
 
     cap_mov.release()
 
@@ -327,16 +350,11 @@ async def loop():
     REC_FRAME = 75 # 녹화할 총 frame 수
     SUBTITLE_DUR = 5  # 자막이 표시될 시간 (초)
 
-    # OSC_ADDR = "127.0.0.1"
-    OSC_ADDR = "192.168.50.71"
-    OSC_PORT = 30000
-
     # 대기 화면에서 재생될 영상
-    WAIT_MOVIE = BASE_PATH + '/waiting_960.mp4'
+    WAIT_MOVIE = BASE_PATH + '/videofiles/waiting_960.mp4'
     REC_FILE = BASE_PATH + '/camout/output.mp4' # 영상 파일 저장 경로
     SAVE_INTERVAL = 5 # frame 이미지 저장 사이 간격
 
-    GUIDE_MOVIE = BASE_PATH + '/guide.mov'
 
     frame_count = 0
     predict_rslt = ""
@@ -717,9 +735,12 @@ async def loop():
         if key == 27:
             break
 
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(ASYNC_AWAIT)
+
 
     # 사용이 끝났을 때, 카메라를 해제하고 창을 닫습니다.
+    pygame.mixer.quit()
+    pygame.quit()
     ndi.send_destroy(ndi_send)
     ndi.destroy()
     cap.release()
@@ -728,7 +749,7 @@ async def loop():
 
 async def init_main():
     # OSC Server
-    server = AsyncIOOSCUDPServer((ip, port), dispatcher, asyncio.get_event_loop())
+    server = AsyncIOOSCUDPServer((RECVIVING_IP, RECVIVING_PORT), dispatcher, asyncio.get_event_loop())
     transport, protocol = await server.create_serve_endpoint()  # Create datagram endpoint and start serving
 
     await loop()  # Enter main loop of program
@@ -744,6 +765,8 @@ asyncio.run(init_main())
 영상모드 <-> 대기모드 : m
 
 녹화 시작 : c
+
+
 
 종료 : esc
 
