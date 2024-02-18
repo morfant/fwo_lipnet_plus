@@ -599,7 +599,7 @@ async def loop():
                     # 이미지 파일 경로 설정
                     formatted_number = f"{frame_count:03d}"
                     index_number = frame_count // SAVE_INTERVAL + 1
-                    image_path = os.path.join(output_directory, f'{index_number:02d}.png')
+                    image_path = os.path.join(output_directory, f'{index_number:02d}.jpg')
 
                     # 이미지 저장
                     cv2.imwrite(image_path, frame)

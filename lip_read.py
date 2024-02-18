@@ -5,9 +5,9 @@ from tensorflow.keras.optimizers import Adam #`tf.keras.optimizers.Adam` runs sl
 # from tensorflow.keras.optimizers.legacy import Adam # for m1/m2 mac
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, EarlyStopping
 
-from chatgpt import ask_chatGPT
+# from chatgpt import ask_chatGPT
 
-MODEL_PATH = '/Users/baggeunsu/fwo_lipnet_plus/models/kor_56/checkpoint'
+MODEL_PATH = './models/kor_56/checkpoint'
 
 
 class LipRead:
@@ -93,22 +93,22 @@ class LipRead:
         # string_list = self.predict_string.split(' ')  # 두 번째부터 끌까지의 단어만 추출
         # print(string_list)
 
-    def translate(self, foreign_string):
-        if foreign_string != None:
+    # def translate(self, foreign_string):
+    #     if foreign_string != None:
 
-            # ChatGPT에게 요청할 텍스트
-            user_input = "\"{}\"의 한국어 발음 결과를 'kor_result: 한국어 발음 결과' 의 형식을 지켜서 표현해줘".format(foreign_string)
+    #         # ChatGPT에게 요청할 텍스트
+    #         user_input = "\"{}\"의 한국어 발음 결과를 'kor_result: 한국어 발음 결과' 의 형식을 지켜서 표현해줘".format(foreign_string)
 
-            # ChatGPT에게 요청 전달
-            # print("User: " +  user_input)
-            chat_response = ask_chatGPT(user_input)
-            # print(chat_response)
+    #         # ChatGPT에게 요청 전달
+    #         # print("User: " +  user_input)
+    #         chat_response = ask_chatGPT(user_input)
+    #         # print(chat_response)
 
-            # ChatGPT의 응답 출력
-            content = chat_response.choices[0].message.content
-            # print("GPT: " + content)
-            result = content.split("kor_result: ")[1]
-            # print(result)
+    #         # ChatGPT의 응답 출력
+    #         content = chat_response.choices[0].message.content
+    #         # print("GPT: " + content)
+    #         result = content.split("kor_result: ")[1]
+    #         # print(result)
 
-            return result 
+    #         return result 
 
