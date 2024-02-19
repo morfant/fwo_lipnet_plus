@@ -43,7 +43,7 @@ ASYNC_AWAIT = 0.00001
 
 # 상태를 나타내는 global 변수들
 is_wait_mode = False # 1: True / 0: False 
-is_guide_mode = True # 녹화 시작 전 안내 영상 송출
+is_guide_mode = False # 녹화 시작 전 안내 영상 송출
 is_count_mode = False 
 is_rec_mode = False 
 is_play_mode = False # 녹화된 사진과 오디오가 재생되고 있는지
@@ -219,7 +219,7 @@ async def play_wait_video_in_existing_window(file_path, window_name, loop=True):
             break
 
         # 'm' 키를 통해 대기모드가 종료될 때
-        key = cv2.waitKey(25)
+        key = cv2.waitKey(1)
         if key == ord('m'):
             is_key_pressed = True
             is_wait_mode = False 
@@ -309,9 +309,7 @@ def load_frames_from_video(filepath:str):
 
     fc = count_frames(filepath)
     print(f'load_frames_from_video frame count of input video: {fc}')
-
     # print ("Processing: {}".format(filepath))
-
     FACE_PREDICTOR_PATH = BASE_PATH + '/predictors/shape_predictor_68_face_landmarks.dat'
     video = Video(vtype='face', face_predictor_path=FACE_PREDICTOR_PATH).from_video(filepath)    
     video_i = ((video.mouth - np.min(video.mouth)) / (np.max(video.mouth) - np.min(video.mouth)) * 255).astype(np.uint8)
@@ -495,8 +493,6 @@ async def loop():
                 timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
                 send_osc_message(OSC_ADDR, OSC_PORT, "/record_start", timestamp)
 
-                
-                
 
 
             # 카운트다운이 진행 중일 때
@@ -540,6 +536,7 @@ async def loop():
 
         # 녹화 중일 때
         if is_rec_mode:
+            # 75 frame 채워지는 동안
             if frame_count < REC_FRAME:
                 if is_wait_mode == True: # 관객이 사라지면
                     print('녹화 중단!!')
@@ -571,13 +568,21 @@ async def loop():
                     calc_frames = []
                     print(f'load_frames_from_video: {REC_FILE}')
                     calc_frames, error_face, error_mouth = load_frames_from_video(REC_FILE)
-                    # print(f'error_f: {error_face} / error_m: {error_mouth}')
+                    print(f'error_f: {error_face} / error_m: {error_mouth}')
                     print(f'shape of calc_frames: {calc_frames.shape}')
 
-                    predict_rslt = lipRead.predict(calc_frames)
-                    # print(predict_rslt)
-                    # predict_rslt = lipRead.translate(rslt)
+                    if error_face == True or error_mouth == True:
+                        print('입술 인식 에러! 다시 한 번 인식을 시도해 주세요.')
+                    else:
+                        predict_rslt = lipRead.predict(calc_frames)
+                        # print(predict_rslt)
+                        # predict_rslt = lipRead.translate(rslt)
 
+                        is_prediction_done = True
+                        is_play_mode = True # 녹화된 영상과 음성이 재생중이다 --> 새로운 녹화를 시작하지 않는다
+                        start_time = time.time()
+
+                
                     '''
                     # TEST
                     # 인식된 입모양 plot 
@@ -602,11 +607,6 @@ async def loop():
                     '''
 
 
-                    is_prediction_done = True
-                    is_play_mode = True # 녹화된 영상과 음성이 재생중이다 --> 새로운 녹화를 시작하지 않는다
-                    start_time = time.time()
-
-                
 
             # 영상 저장
             if mov_writer != None: # 영상이 저장되고 있다면

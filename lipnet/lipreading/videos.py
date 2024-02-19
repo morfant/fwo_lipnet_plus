@@ -123,6 +123,10 @@ class Video(object):
         return self
 
     def from_video(self, path):
+        # 에러 상태 변수 초기화
+        self.face_detect_failed = False
+        self.mouth_detection_chopped = False
+
         print(f'from_video - before get_video_frames')
         frames = self.get_video_frames(path)
         print(f'from_video - after get_video_frames')
@@ -168,8 +172,6 @@ class Video(object):
 
 
     def process_frame(self, detector, predictor, frame):
-        self.face_detect_failed = False
-        self.mouth_detection_chopped = False
         MOUTH_WIDTH = 100
         MOUTH_HEIGHT = 50
         HORIZONTAL_PAD = 0.19
@@ -222,7 +224,7 @@ class Video(object):
         mouth_crop_image = resized_img[mouth_t:mouth_b, mouth_l:mouth_r]
 
         mouth_crop_image_np = np.array(mouth_crop_image)
-        mouth_crop_image_np_shape = mouth_crop_image_np.shape 
+        # mouth_crop_image_np_shape = mouth_crop_image_np.shape 
 
         # if len(mouth_frames) > 0:
         #     last_element_shape = np.array(mouth_frames[-1]).shape
@@ -271,8 +273,10 @@ class Video(object):
 
             else:
                 return frames
+        
+        return mouth_frames
 
-                        # dets = detector(frame, 1)
+            # dets = detector(frame, 1)
             # shape = None
             # for k, d in enumerate(dets):
             #     shape = predictor(frame, d)
@@ -339,7 +343,6 @@ class Video(object):
             #     # sys.stderr.write(f'get_frames_mouth DETECT ERROR!(Width)')
             #     # return frames
 
-        return mouth_frames
 
     def get_video_frames(self, path):
         videogen = skvideo.io.vreader(path)
