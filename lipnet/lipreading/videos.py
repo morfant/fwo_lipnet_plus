@@ -123,8 +123,11 @@ class Video(object):
         return self
 
     def from_video(self, path):
+        print(f'from_video - before get_video_frames')
         frames = self.get_video_frames(path)
+        print(f'from_video - after get_video_frames')
         self.handle_type(frames)
+        print(f'from_video - after handle_type')
         return self
 
     def from_array(self, frames):
@@ -135,14 +138,19 @@ class Video(object):
         if self.vtype == 'mouth':
             self.process_frames_mouth(frames)
         elif self.vtype == 'face':
+            print(f'\thandle_type - before process_frames_face')
             self.process_frames_face(frames)
+            print(f'\thandle_type - after process_frames_face')
         else:
             raise Exception('Video type not found')
 
     def process_frames_face(self, frames):
         detector = dlib.get_frontal_face_detector()
         predictor = dlib.shape_predictor(self.face_predictor_path)
+
+        print(f'\t\tprocess_frames_face - before get_frames_mouth')
         mouth_frames = self.get_frames_mouth(detector, predictor, frames)
+        print(f'\t\tprocess_frames_face - after get_frames_mouth')
 
         print('-' * 50)
         print(f'len of mouth frames: {len(mouth_frames)}')
@@ -158,6 +166,87 @@ class Video(object):
         self.mouth = np.array(frames)
         self.set_data(frames)
 
+
+    def process_frame(self, detector, predictor, frame):
+        self.face_detect_failed = False
+        self.mouth_detection_chopped = False
+        MOUTH_WIDTH = 100
+        MOUTH_HEIGHT = 50
+        HORIZONTAL_PAD = 0.19
+        normalize_ratio = None
+        # mouth_frames = []
+
+        dets = detector(frame, 1)
+        shape = None
+        for k, d in enumerate(dets):
+            shape = predictor(frame, d)
+            i = -1
+
+        # print(f'get_frames_mouth (shape is None): False')
+        if shape is None: # Detector doesn't detect face, just return as is
+            # 디텍트가 안되면 원래의 frames를 내보내고 함수를 끝낸다. --> 디텍트가 되지 않았을 때의 상황을 알려주는 용도로 사용 가능
+            print(f'get_frames_mouth() DETECT ERROR!!!!! ----> Face detection failed')
+            self.face_detect_failed = True
+            # return frames
+            return False
+
+        mouth_points = []
+        for part in shape.parts():
+            i += 1
+            if i < 48: # Only take mouth region
+                continue
+            mouth_points.append((part.x,part.y))
+        np_mouth_points = np.array(mouth_points)
+
+        mouth_centroid = np.mean(np_mouth_points[:, -2:], axis=0)
+
+        if normalize_ratio is None:
+            mouth_left = np.min(np_mouth_points[:, :-1]) * (1.0 - HORIZONTAL_PAD)
+            mouth_right = np.max(np_mouth_points[:, :-1]) * (1.0 + HORIZONTAL_PAD)
+
+            normalize_ratio = MOUTH_WIDTH / float(mouth_right - mouth_left)
+
+        new_img_shape = (int(frame.shape[0] * normalize_ratio), int(frame.shape[1] * normalize_ratio))
+        # resized_img = imresize(frame, new_img_shape)
+        resized_img = resize(frame, new_img_shape)
+
+
+        mouth_centroid_norm = mouth_centroid * normalize_ratio
+        # print(f'get_frames_mouth (mouth_centroid_norm): {mouth_centroid_norm}')
+
+        mouth_l = int(mouth_centroid_norm[0] - MOUTH_WIDTH / 2)
+        mouth_r = int(mouth_centroid_norm[0] + MOUTH_WIDTH / 2)
+        mouth_t = int(mouth_centroid_norm[1] - MOUTH_HEIGHT / 2)
+        mouth_b = int(mouth_centroid_norm[1] + MOUTH_HEIGHT / 2)
+
+        mouth_crop_image = resized_img[mouth_t:mouth_b, mouth_l:mouth_r]
+
+        mouth_crop_image_np = np.array(mouth_crop_image)
+        mouth_crop_image_np_shape = mouth_crop_image_np.shape 
+
+        # if len(mouth_frames) > 0:
+        #     last_element_shape = np.array(mouth_frames[-1]).shape
+        #     if mouth_crop_image_np_shape != last_element_shape:
+        #         print(f'get_frames_mouth() DETECT ERROR!!!!! ----> Mouth detection area(width or height) is chopped')
+        #         self.mouth_detection_chopped = True
+        #         # return frames
+        #         return False
+
+        return mouth_crop_image
+
+        # mouth_frames_np = np.array(mouth_frames)
+        # mouth_frames_np_shape = mouth_frames_np.shape 
+        # print(f'get_frames_mouth (mouth_frames.shape): {mouth_frames_np_shape}')
+        # if mouth_frames_np_shape[1] != 50:
+            # sys.stderr.write(f'get_frames_mouth DETECT ERROR!(Height)')
+            # return frames
+
+        # if mouth_frames_np_shape[2] != 100:
+            # sys.stderr.write(f'get_frames_mouth DETECT ERROR!(Width)')
+            # return frames
+
+
+    
     def get_frames_mouth(self, detector, predictor, frames):
         self.face_detect_failed = False
         self.mouth_detection_chopped = False
@@ -166,73 +255,89 @@ class Video(object):
         HORIZONTAL_PAD = 0.19
         normalize_ratio = None
         mouth_frames = []
+        last_element_shape = None
+
         for frame in frames:
-            dets = detector(frame, 1)
-            shape = None
-            for k, d in enumerate(dets):
-                shape = predictor(frame, d)
-                i = -1
-
-            # print(f'get_frames_mouth (shape is None): False')
-            if shape is None: # Detector doesn't detect face, just return as is
-                # 디텍트가 안되면 원래의 frames를 내보내고 함수를 끝낸다. --> 디텍트가 되지 않았을 때의 상황을 알려주는 용도로 사용 가능
-                print(f'get_frames_mouth() DETECT ERROR!!!!! ----> Face detection failed')
-                self.face_detect_failed = True
-                return frames
-
-            mouth_points = []
-            for part in shape.parts():
-                i += 1
-                if i < 48: # Only take mouth region
-                    continue
-                mouth_points.append((part.x,part.y))
-            np_mouth_points = np.array(mouth_points)
-
-            mouth_centroid = np.mean(np_mouth_points[:, -2:], axis=0)
-
-            if normalize_ratio is None:
-                mouth_left = np.min(np_mouth_points[:, :-1]) * (1.0 - HORIZONTAL_PAD)
-                mouth_right = np.max(np_mouth_points[:, :-1]) * (1.0 + HORIZONTAL_PAD)
-
-                normalize_ratio = MOUTH_WIDTH / float(mouth_right - mouth_left)
-
-            new_img_shape = (int(frame.shape[0] * normalize_ratio), int(frame.shape[1] * normalize_ratio))
-            # resized_img = imresize(frame, new_img_shape)
-            resized_img = resize(frame, new_img_shape)
-
-
-            mouth_centroid_norm = mouth_centroid * normalize_ratio
-            # print(f'get_frames_mouth (mouth_centroid_norm): {mouth_centroid_norm}')
-
-            mouth_l = int(mouth_centroid_norm[0] - MOUTH_WIDTH / 2)
-            mouth_r = int(mouth_centroid_norm[0] + MOUTH_WIDTH / 2)
-            mouth_t = int(mouth_centroid_norm[1] - MOUTH_HEIGHT / 2)
-            mouth_b = int(mouth_centroid_norm[1] + MOUTH_HEIGHT / 2)
-
-            mouth_crop_image = resized_img[mouth_t:mouth_b, mouth_l:mouth_r]
-
-            mouth_crop_image_np = np.array(mouth_crop_image)
-            mouth_crop_image_np_shape = mouth_crop_image_np.shape 
-
-            if len(mouth_frames) > 0:
-                last_element_shape = np.array(mouth_frames[-1]).shape
-                if mouth_crop_image_np_shape != last_element_shape:
+            processed_frame = self.process_frame(detector, predictor, frame)
+            if isinstance(processed_frame, np.ndarray):
+                if last_element_shape is not None and np.array(processed_frame).shape != last_element_shape:
                     print(f'get_frames_mouth() DETECT ERROR!!!!! ----> Mouth detection area(width or height) is chopped')
                     self.mouth_detection_chopped = True
+                    # return frames
                     return frames
 
-            mouth_frames.append(mouth_crop_image)
+                mouth_frames.append(processed_frame)
+                last_element_shape = np.array(processed_frame).shape
 
-            # mouth_frames_np = np.array(mouth_frames)
-            # mouth_frames_np_shape = mouth_frames_np.shape 
-            # print(f'get_frames_mouth (mouth_frames.shape): {mouth_frames_np_shape}')
-            # if mouth_frames_np_shape[1] != 50:
-                # sys.stderr.write(f'get_frames_mouth DETECT ERROR!(Height)')
-                # return frames
+            else:
+                return frames
 
-            # if mouth_frames_np_shape[2] != 100:
-                # sys.stderr.write(f'get_frames_mouth DETECT ERROR!(Width)')
-                # return frames
+                        # dets = detector(frame, 1)
+            # shape = None
+            # for k, d in enumerate(dets):
+            #     shape = predictor(frame, d)
+            #     i = -1
+
+            # # print(f'get_frames_mouth (shape is None): False')
+            # if shape is None: # Detector doesn't detect face, just return as is
+            #     # 디텍트가 안되면 원래의 frames를 내보내고 함수를 끝낸다. --> 디텍트가 되지 않았을 때의 상황을 알려주는 용도로 사용 가능
+            #     print(f'get_frames_mouth() DETECT ERROR!!!!! ----> Face detection failed')
+            #     self.face_detect_failed = True
+            #     return frames
+
+            # mouth_points = []
+            # for part in shape.parts():
+            #     i += 1
+            #     if i < 48: # Only take mouth region
+            #         continue
+            #     mouth_points.append((part.x,part.y))
+            # np_mouth_points = np.array(mouth_points)
+
+            # mouth_centroid = np.mean(np_mouth_points[:, -2:], axis=0)
+
+            # if normalize_ratio is None:
+            #     mouth_left = np.min(np_mouth_points[:, :-1]) * (1.0 - HORIZONTAL_PAD)
+            #     mouth_right = np.max(np_mouth_points[:, :-1]) * (1.0 + HORIZONTAL_PAD)
+
+            #     normalize_ratio = MOUTH_WIDTH / float(mouth_right - mouth_left)
+
+            # new_img_shape = (int(frame.shape[0] * normalize_ratio), int(frame.shape[1] * normalize_ratio))
+            # # resized_img = imresize(frame, new_img_shape)
+            # resized_img = resize(frame, new_img_shape)
+
+
+            # mouth_centroid_norm = mouth_centroid * normalize_ratio
+            # # print(f'get_frames_mouth (mouth_centroid_norm): {mouth_centroid_norm}')
+
+            # mouth_l = int(mouth_centroid_norm[0] - MOUTH_WIDTH / 2)
+            # mouth_r = int(mouth_centroid_norm[0] + MOUTH_WIDTH / 2)
+            # mouth_t = int(mouth_centroid_norm[1] - MOUTH_HEIGHT / 2)
+            # mouth_b = int(mouth_centroid_norm[1] + MOUTH_HEIGHT / 2)
+
+            # mouth_crop_image = resized_img[mouth_t:mouth_b, mouth_l:mouth_r]
+
+            # mouth_crop_image_np = np.array(mouth_crop_image)
+            # mouth_crop_image_np_shape = mouth_crop_image_np.shape 
+
+            # if len(mouth_frames) > 0:
+            #     last_element_shape = np.array(mouth_frames[-1]).shape
+            #     if mouth_crop_image_np_shape != last_element_shape:
+            #         print(f'get_frames_mouth() DETECT ERROR!!!!! ----> Mouth detection area(width or height) is chopped')
+            #         self.mouth_detection_chopped = True
+            #         return frames
+
+            # mouth_frames.append(mouth_crop_image)
+
+            # # mouth_frames_np = np.array(mouth_frames)
+            # # mouth_frames_np_shape = mouth_frames_np.shape 
+            # # print(f'get_frames_mouth (mouth_frames.shape): {mouth_frames_np_shape}')
+            # # if mouth_frames_np_shape[1] != 50:
+            #     # sys.stderr.write(f'get_frames_mouth DETECT ERROR!(Height)')
+            #     # return frames
+
+            # # if mouth_frames_np_shape[2] != 100:
+            #     # sys.stderr.write(f'get_frames_mouth DETECT ERROR!(Width)')
+            #     # return frames
 
         return mouth_frames
 
