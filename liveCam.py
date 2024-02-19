@@ -103,7 +103,7 @@ dispatcher.map("/is_wait_mode", wait_mode_handler) # Address pattern, handler fu
 dispatcher.map("/is_play_mode", play_mode_handler) # Address pattern, handler function
 
 
-def putTextKor(src, text, pos=(10, 140), font_size=80, font_color=(255, 255, 255)) :
+def putTextKor(src, text, pos=(10, 140), font_size=80, font_color=(263, 20, 216)) :
     global VIEW_SCALE
 
     FONT_PATH = BASE_PATH + '/IBM_Plex_Sans_KR/IBMPlexSansKR-Regular.ttf'
@@ -113,20 +113,25 @@ def putTextKor(src, text, pos=(10, 140), font_size=80, font_color=(255, 255, 255
 
     # text = "안녕하세요"
 
-    # 텍스트 크기 얻기
-    text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-    # print(f'text_size: {text_size}')
+    if pos == None:
+        # 텍스트 크기 얻기
+        text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+        # print(f'text_size: {text_size}')
 
-    # 이미지 중앙에 텍스트를 출력할 위치 계산
-    # print(f'0: {src.shape[0]}') # height
-    # print(f'1: {src.shape[1]}') # width
-    text_x = (src.shape[1] - text_size[0]//3) // 2 # 왠지 모르겠지만 text_size를 3으로 나누어야 화면의 가운데가 된다
-    text_y = src.shape[0] - 150 # 150 from bottom 
+        # 이미지 중앙에 텍스트를 출력할 위치 계산
+        # print(f'0: {src.shape[0]}') # height
+        # print(f'1: {src.shape[1]}') # width
+        text_x = (src.shape[1] - text_size[0]//3) // 2 # 왠지 모르겠지만 text_size를 3으로 나누어야 화면의 가운데가 된다
+        text_y = src.shape[0] - 150 # 150 from bottom 
+
+    else:
+        text_x = pos[0]
+        text_y = pos[1]
 
     img_pil = Image.fromarray(src)
     draw = ImageDraw.Draw(img_pil)
     font = ImageFont.truetype(FONT_PATH, font_size)
-    draw.text((text_x, text_y), text, font=font, fill=(263, 20, 216))
+    draw.text((text_x, text_y), text, font=font, fill=font_color)
     return np.array(img_pil)
 
 
@@ -537,7 +542,7 @@ async def loop():
         # 녹화 중일 때
         if is_rec_mode:
             # 75 frame 채워지는 동안
-            if frame_count < REC_FRAME:
+            if frame_count < REC_FRAME - 1:
                 if is_wait_mode == True: # 관객이 사라지면
                     print('녹화 중단!!')
 
@@ -550,6 +555,11 @@ async def loop():
                     is_rec_mode = False 
                     is_prediction_done = False
 
+
+            # 녹화 끝나기 직전 프레임
+            elif frame_count == REC_FRAME - 1:
+
+                print(f'{frame_count} frame 녹화 완료')
 
             # 75frame이 채워지면 녹화 종료
             elif frame_count >= REC_FRAME: # 저장은 frame_count가 74일 때까지만 되어야 한다
@@ -629,40 +639,48 @@ async def loop():
                 # print(f'Recorded frame count: {frame_count}')
 
 
-            # 영상에 녹화 안되는 부분
-            # 텍스트 추가 (현재 녹화 중임을 알려주는 메시지)
-            text = 'Recording...'
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = VIEW_SCALE
-            # print(f'font_scale: {font_scale}˙')
-            font_thickness = 4 * VIEW_SCALE
-            text_position = (10, 25 * font_scale)
-            text_color = (0, 0, 255)  # BGR format
-            cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness, cv2.LINE_AA)
+            if frame_count < REC_FRAME - 1:
+                # 영상에 녹화 안되는 부분
+                # 텍스트 추가 (현재 녹화 중임을 알려주는 메시지)
+                text = 'Recording...'
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = VIEW_SCALE
+                # print(f'font_scale: {font_scale}˙')
+                font_thickness = 4 * VIEW_SCALE
+                text_position = (10, 25 * font_scale)
+                text_color = (0, 0, 255)  # BGR format
+                cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
-            # 화면 왼쪽에서 오른쪽으로 '.' 문자 채우기
-            # font_scale = 1 
-            # elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
-            MAX_DOT_NUM = 36
-            dots = min(int(frame_count * MAX_DOT_NUM / 75), MAX_DOT_NUM)
-            progress_text = '.' * dots 
-            font_thickness = 3 * VIEW_SCALE
-            cv2.putText(frame, progress_text, (-5, text_position[1] + 40), font, font_scale, text_color, font_thickness, cv2.LINE_AA)
+                # 화면 왼쪽에서 오른쪽으로 '.' 문자 채우기
+                # font_scale = 1 
+                # elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
+                MAX_DOT_NUM = 36
+                dots = min(int(frame_count * MAX_DOT_NUM / 75), MAX_DOT_NUM)
+                progress_text = '.' * dots 
+                font_thickness = 3 * VIEW_SCALE
+                cv2.putText(frame, progress_text, (-5, text_position[1] + 40), font, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
-            # 중심 좌표와 크기
-            center = (frame.shape[1] // 2, frame.shape[0] // 2)  # 이미지 중심 좌표
+                # 중심 좌표와 크기
+                center = (frame.shape[1] // 2, frame.shape[0] // 2)  # 이미지 중심 좌표
 
-            # pt1과 pt2 계산
-            r_width = width * 2 // 3
-            r_height = height * 2 // 3
+                # pt1과 pt2 계산
+                r_width = width * 2 // 3
+                r_height = height * 2 // 3
 
-            pt1 = (center[0] - r_width // 2, center[1] - r_height // 2)
-            pt2 = (center[0] + r_width // 2, center[1] + r_height // 2)
-            # print(f'pt1: {pt1} / pt2: {pt2}')
+                pt1 = (center[0] - r_width // 2, center[1] - r_height // 2)
+                pt2 = (center[0] + r_width // 2, center[1] + r_height // 2)
+                # print(f'pt1: {pt1} / pt2: {pt2}')
 
-            rect_color = (0, 255, 0)  # BGR format (green)
-            rect_thickness = 4 * VIEW_SCALE
-            cv2.rectangle(frame, pt1, pt2, rect_color, rect_thickness)
+                rect_color = (0, 255, 0)  # BGR format (green)
+                rect_thickness = 4 * VIEW_SCALE
+                cv2.rectangle(frame, pt1, pt2, rect_color, rect_thickness)
+
+
+            elif frame_count >= REC_FRAME - 1:
+                # 녹화 완료시 안내 메시지
+                text = "녹화가 완료 되었습니다. 잠시 기다려 주세요..."
+                text_color = (0, 255, 255)  # BGR format
+                frame = putTextKor(frame, text, pos=(80, 100), font_color=text_color, font_size=30)
 
 
 
@@ -704,7 +722,7 @@ async def loop():
                 if elapsed_time < SUBTITLE_DUR:
                     # print(f"subtitle: {elapsed_time}")
                     print(f'predict_rslt: {predict_rslt}')
-                    frame_with_image = putTextKor(frame_with_image, predict_rslt)
+                    frame_with_image = putTextKor(frame_with_image, predict_rslt, pos=None)
                     cv2.imshow('Camera Feed', frame_with_image)
 
                 else:
