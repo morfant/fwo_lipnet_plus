@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf 
 from utils import load_data, num_to_char
 from modelutil import load_model
-from chatgpt import ask_chatgpt
+from chatgpt import ask_chatGPT
 
 # Set the layout to the streamlit app as wide 
 st.set_page_config(layout='wide')
@@ -20,7 +20,8 @@ with st.sidebar:
 
 st.title('LipNet Full Stack App') 
 # Generating a list of options or videos 
-options = os.listdir(os.path.join('..', 'data', 's1'))
+# options = os.listdir(os.path.join('..', 'data', 's1'))
+options = os.listdir(os.path.join('..', 'data', 'test'))
 sorted_options = sorted(options)
 # st.text(sorted_options)
 selected_video = st.selectbox('Choose video', sorted_options)
@@ -34,7 +35,8 @@ if options:
     # Rendering the video 
     with col1: 
         st.info('The video below displays the converted video in mp4 format')
-        file_path = os.path.join('..','data','s1', selected_video)
+        # file_path = os.path.join('..','data','s1', selected_video)
+        file_path = os.path.join('..','data','test', selected_video)
         st.text(file_path)
         if file_path.split('.')[1] != 'mp4':
             os.system(f'ffmpeg -i {file_path} -vcodec libx264 test_video.mp4 -y')
@@ -68,14 +70,14 @@ if options:
         st.text(converted_prediction)
         
 
-    if converted_prediction != None:
-        # ChatGPT에게 요청할 텍스트
-        user_input = "\"{}\"의 한국어 발음 결과만 보여줘".format(converted_prediction)
+    # if converted_prediction != None:
+    #     # ChatGPT에게 요청할 텍스트
+    #     user_input = "\"{}\"의 한국어 발음 결과만 보여줘".format(converted_prediction)
 
-        # ChatGPT에게 요청 전달
-        chatgpt_response = ask_chatgpt(user_input)
+    #     # ChatGPT에게 요청 전달
+    #     chatgpt_response = ask_chatGPT(user_input)
 
-        # ChatGPT의 응답 출력
-        st.text("User: " +  user_input)
-        st.text("ChatGPT: " + chatgpt_response)
+    #     # ChatGPT의 응답 출력
+    #     st.text("User: " +  user_input)
+    #     st.text("ChatGPT: " + chatgpt_response)
 

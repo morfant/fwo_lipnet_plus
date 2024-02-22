@@ -1,3 +1,5 @@
+# np.float, np.int 가 deprecate 되었는데 사용되는 문제가 있어 수정한 버전
+
 """ Plugin that uses ffmpeg to read and write series of images to
 a wide range of video formats.
 
