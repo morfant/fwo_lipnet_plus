@@ -46,7 +46,7 @@ ASYNC_AWAIT = 0.00001
 ARCHIVE_MAX_NUM = 120 
 
 # 상태를 나타내는 global 변수들
-is_wait_mode = False # 1: True / 0: False 
+is_wait_mode = True # 1: True / 0: False 
 is_guide_mode = True # 녹화 시작 전 안내 영상 송출
 is_count_mode = False 
 is_rec_mode = False 
@@ -607,6 +607,7 @@ async def loop():
 
         # 카운트 모드일 때 count down 숫자 표시
         if is_count_mode == True and is_play_mode == False and is_prediction_done == False:
+            send_osc_message(OSC_ADDR_2, OSC_PORT, "/make_vib_long", 0)
             frame_count = 0 # frame_count 초기화
             is_prediction_done = False
             elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
@@ -631,6 +632,7 @@ async def loop():
 
             # 카운트 다운이 끝났을 때
             if count_down < 0:
+                next_count_down = 3
 
                 print("녹화 시작")
                 mov_writer = cv2.VideoWriter(REC_FILE, fourcc, fps, (width, height))
@@ -726,8 +728,10 @@ async def loop():
 
         # 녹화 중일 때
         if is_rec_mode:
+
             # 75 frame 채워지는 동안
             if frame_count < REC_FRAME - 1:
+                send_osc_message(OSC_ADDR_2, OSC_PORT, "/make_vib_long", 0)
 
                 # if frame_count % 5 == 0:
                     # send_osc_message(OSC_ADDR_2, OSC_PORT, "/make_vib", 1) 
