@@ -1,7 +1,11 @@
 # fwo_lipnet_plus
 
+환경
+python3.11.7
+Apple silicon M1
 
-# libndi.dylib, NDIlib.cpython-311-darwin.so
+
+## libndi.dylib, NDIlib.cpython-311-darwin.so
 python3.11을 위해 빌드한 python NDI wrapper
 
 # ffmpeg.py
