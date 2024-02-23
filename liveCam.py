@@ -224,7 +224,9 @@ async def play_guide_video_in_existing_window(file_path, window_name, loop=False
     # is_key_pressed = False
 
     # 오디오 재생
-    pygame.mixer.music.play()
+    # pygame.mixer.music.play()
+    send_osc_message(OSC_ADDR_2, OSC_PORT, "/guide_play", 1) # vib speaker
+
 
     cap_mov = cv2.VideoCapture(file_path)
 
@@ -254,6 +256,8 @@ async def play_guide_video_in_existing_window(file_path, window_name, loop=False
         # 'g' 키를 통해 대기모드가 종료될 때
         key = cv2.waitKey(1) # 영상 재생의 fps 에 결정적 영향을 준다. 영상과 소리 사이의 싱크를 맞추려면 최소화 해야 한다
         if key == 27:
+            # pygame.mixer.music.stop()
+            send_osc_message(OSC_ADDR_LOCAL, OSC_PORT, "/guide_stop", 1)
             # is_key_pressed = True
             is_wait_mode = False 
             is_rec_mode = False
@@ -1017,6 +1021,10 @@ async def loop():
                         error_face = False
                         is_rec_mode = False
                         is_count_mode = True
+                        is_prediction_done = False
+                        is_rec_mode = False
+                        is_count_mode = True
+                        start_time = cv2.getTickCount()
 
 
             # 일정 시간 동안만 자막 표시
@@ -1059,6 +1067,9 @@ async def loop():
 
         # 'esc' 키를 누르면 프로그램 종료합니다.
         if key == 27:
+            send_osc_message(OSC_ADDR_2, OSC_PORT, "/make_vib_long", 0)
+            send_osc_message(OSC_ADDR_2, OSC_PORT, "/make_vib", 0)
+            send_osc_message(OSC_ADDR_2, OSC_PORT, "/guide_stop", 1)
             break
 
         await asyncio.sleep(ASYNC_AWAIT)
