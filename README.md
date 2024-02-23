@@ -5,10 +5,10 @@ python3.11.7
 Apple silicon M1
 
 
-## libndi.dylib, NDIlib.cpython-311-darwin.so
+### libndi.dylib, NDIlib.cpython-311-darwin.so
 python3.11을 위해 빌드한 python NDI wrapper
 
-# ffmpeg.py
+## ffmpeg.py
 deprecate 된 np.float, np.int 를 수정한 버전
 
 # preProcess.ipynb
