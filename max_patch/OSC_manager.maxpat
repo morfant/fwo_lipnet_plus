@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 34.0, 87.0, 1520.0, 885.0 ],
+		"rect" : [ 34.0, 106.0, 1520.0, 885.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -39,6 +39,17 @@
 		"subpatcher_template" : "",
 		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-17",
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 506.0, 560.0, 150.0, 20.0 ],
+					"text" : "Set initial deveci here"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-27",
 					"maxclass" : "newobj",
@@ -482,7 +493,7 @@
 									"numoutlets" : 1,
 									"outlettype" : [ "" ],
 									"patching_rect" : [ 407.154540999999995, 292.0, 29.5, 22.0 ],
-									"text" : "6"
+									"text" : "5"
 								}
 
 							}
@@ -575,7 +586,7 @@
 								"box" : 								{
 									"hidden" : 1,
 									"id" : "obj-36",
-									"items" : [ "None", ",", "C270 HD WEBCAM", ",", "NDI Audio", ",", "MacBook Pro Microphone", ",", "Microsoft Teams Audio", ",", "ZoomAudioDevice" ],
+									"items" : [ "None", ",", "NDI Audio", ",", "MacBook Pro Microphone", ",", "Microsoft Teams Audio", ",", "ZoomAudioDevice" ],
 									"maxclass" : "umenu",
 									"numinlets" : 1,
 									"numoutlets" : 3,
