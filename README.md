@@ -1,12 +1,14 @@
 # fwo_lipnet_plus
 
-환경 
+환경
+
 python3.11.7  
 Apple silicon M1   
    
     
 
 실행
+
 pip install -r requirements.txt     
 python liveCam.py
    
