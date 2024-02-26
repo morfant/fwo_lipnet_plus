@@ -11,13 +11,15 @@ pip install -r requirements.txt
 python liveCam.py
    
 
-
-
+   
+   
 ## libndi.dylib, NDIlib.cpython-311-darwin.so
 python3.11을 위해 빌드한 python NDI wrapper
-
+   
+   
 ## ffmpeg.py
 deprecate 된 np.float, np.int 를 수정한 버전
+
 
 ## preProcess.ipynb
 데이터 전처리를 위한 과정들을 담은 파일
