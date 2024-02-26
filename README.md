@@ -3,6 +3,14 @@
 환경 
 python3.11.7  
 Apple silicon M1   
+   
+    
+
+실행
+pip install -r requirements.txt     
+python liveCam.py
+   
+
 
 
 ## libndi.dylib, NDIlib.cpython-311-darwin.so
