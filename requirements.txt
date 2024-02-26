@@ -26,6 +26,7 @@ distro==1.9.0
 dlib==19.24.2
 executing==2.0.1
 fastjsonschema==2.19.1
+ffpyplayer==4.5.1
 filelock==3.13.1
 flatbuffers==23.5.26
 fonttools==4.47.0
@@ -105,9 +106,12 @@ ptyprocess==0.7.0
 pure-eval==0.2.2
 pyasn1==0.5.1
 pyasn1-modules==0.3.0
+PyAudio==0.2.14
 pycparser==2.21
 pydantic==2.6.1
 pydantic_core==2.16.2
+pydub==0.25.1
+pygame==2.5.2
 Pygments==2.17.2
 pyparsing==3.1.1
 pyrealsense2-macosx==2.54.2
