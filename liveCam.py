@@ -1,33 +1,29 @@
 import asyncio
-import errno
-import fnmatch
-import os
-import re
-import sys
-import time
+import os, re, time, shutil
 from datetime import datetime
-import shutil
+import cv2, pygame
 
-import cv2
-import imageio
+# ML
 import numpy as np
-import pygame
 import tensorflow as tf
+
+# Image
+import imageio
 from matplotlib import pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
-from pythonosc import osc_server, udp_client
+
+# OSC
+from pythonosc import udp_client
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import AsyncIOOSCUDPServer
-from skimage import io
 
+# NDI
 import NDIlib as ndi
 from lip_read import LipRead
 from lipnet.lipreading.videos import Video
 
-# from video_with_audio import WithMediaPlayer
-
-BASE_PATH = "/Users/baggeunsu/fwo_lipnet_plus" # 맥미니에서 실행할 때
-# BASE_PATH = "/Users/giy/Projects/fwo_lipnet_plus" # 노트북에서 실행할 때
+# BASE_PATH = "/Users/baggeunsu/fwo_lipnet_plus" # 맥미니에서 실행할 때
+BASE_PATH = "/Users/giy/Projects/fwo_lipnet_plus" # 노트북에서 실행할 때
 STORAGE_PATH = '/Users/NetworkFolder/image_server'
 AUDIO_STORAGE_PATH = '/Users/NetworkFolder/audio_files'
 
@@ -107,6 +103,7 @@ def delete_file(file_path):
         print(f"오류 발생: {e}")
 
 
+# opencv를 이용해 Round rect를 그리는 함수
 # For Details Reference Link:
 # http://stackoverflow.com/questions/46036477/drawing-fancy-rectangle-around-face
 def draw_border(img, pt1, pt2, color, thickness, r, d):
@@ -134,7 +131,6 @@ def draw_border(img, pt1, pt2, color, thickness, r, d):
     cv2.ellipse(img, (x2 - r, y2 - r), (r, r), 0, 0, 90, color, thickness)
 
 
-
 def sort_folders_by_datetime(folder_names):
     # 날짜와 시간을 기준으로 폴더 이름들을 정렬
     sorted_folders = sorted(folder_names, key=lambda x: datetime.strptime(x, '%y_%m_%d_%H_%M_%S'))
@@ -142,7 +138,6 @@ def sort_folders_by_datetime(folder_names):
     # sorted_folders = sorted(folder_names, key=lambda x: datetime.strptime(x, '%y년_%m월_%d일_%H시_%M분_%S초'))
 
     return sorted_folders
-
     
 
 def sort_audio_files_by_datetime(folder_names):
@@ -152,8 +147,6 @@ def sort_audio_files_by_datetime(folder_names):
     # sorted_folders = sorted(folder_names, key=lambda x: datetime.strptime(x, '%y년_%m월_%d일_%H시_%M분_%S초'))
 
     return sorted_folders
-
-
 
 
 # OSC receive handler
@@ -178,7 +171,6 @@ def audio_play_handler(address, *args):
     audio_play = bool(args[0])
 
 
-
 # OSC Server(Async) setup
 dispatcher = Dispatcher()
 dispatcher.map("/is_wait_mode", wait_mode_handler) # Address pattern, handler function
@@ -186,6 +178,7 @@ dispatcher.map("/is_play_mode", play_mode_handler) # Address pattern, handler fu
 dispatcher.map("/audio_play", audio_play_handler) # Address pattern, handler function
 
 
+# cv를 이용해 한글을 표시하는 함수
 def putTextKor(src, text, pos=(10, 140), font_size=80, font_color=(263, 20, 216), font_thickness=3) :
     global VIEW_SCALE
 
@@ -349,9 +342,7 @@ def send_osc_message(osc_server_ip, osc_server_port, osc_address, osc_message):
 
 
 
-
-# 촬영 중 일정 간격 이미지 저장할 폴더 생성
-# captured_frames_YYMMDD_HHMMSS 의 형태
+# 촬영 중 audio 파일 저장할 폴더 생성
 def create_audio_output_directory():
     global current_audiofile_path 
 
@@ -438,6 +429,7 @@ def count_frames(video_path):
     return frame_count
 
 
+# 비디오 파일에서 입모양 추출, ML에 전달할 데이터로 만드는 함수
 def load_frames_from_video(filepath:str):
     print(f'load_frames_from_video() path: {filepath}')
 
@@ -471,6 +463,7 @@ def load_frames_from_video(filepath:str):
     return rslt, error_face, error_mouth # 각 데이터에서 평균을 뺀 다음, 표준편차로 나눈다 --> 데이터 정규화
 
 
+# 폴더 안에 .wav 파일들의 이름 가져오는 함수
 def get_wav_files_in_folder(folder_path):
     wav_files = []
     pattern = re.compile(r"\d{12}\.wav")  # 12자리 숫자 다음에 .wav가 있는지 확인하는 정규표현식
@@ -482,18 +475,21 @@ def get_wav_files_in_folder(folder_path):
 
 
 
-
 # ---------------------- MAIN -----------------------
 async def loop():
 
+    # countdown 시 진동을 만들기 위한 변수
     next_count_down = 3
 
+    # 입모양 인식시 에러 종류 별 상태 저장 변수
     error_face = False
     error_mouth = False
 
+    # 입술 인식 에러 표시를 위한 타이머
     err_start_time = 0
     err_elapsed_time = 0  
 
+    # 결과 자막 표시를 위한 타이머
     sub_start_time = 0 
     sub_elapsed_time = 0
     
@@ -507,7 +503,6 @@ async def loop():
     WAIT_MOVIE = BASE_PATH + '/videofiles/waiting_960.mp4'
     REC_FILE = BASE_PATH + '/camout/output.mp4' # 영상 파일 저장 경로
     SAVE_INTERVAL = 5 # frame 이미지 저장 사이 간격
-
 
     frame_count = 0
     predict_rslt = ""
@@ -617,6 +612,7 @@ async def loop():
             elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
             count_down = COUNT_DOWN_START - int(elapsed_time)
 
+            # 카운트다운에 맞춰 진동 만들어 내기
             if count_down == 3 and next_count_down == 3:
                 send_osc_message(OSC_ADDR_2, OSC_PORT, "/make_vib", 1)
                 next_count_down = 2
@@ -658,28 +654,6 @@ async def loop():
                 is_count_mode = False 
                 is_rec_mode = True 
                 
-                
-                # # def list_subdirectories(folder_path):
-                # # 주어진 폴더 경로에서 하위 폴더들의 이름을 가져옴
-                # subdirectories = [name for name in os.listdir(STORAGE_PATH)
-                # if os.path.isdir(os.path.join(STORAGE_PATH, name))]
-                #     # return subdirectories
-                # sorted_dir_list = sort_folders_by_datetime(subdirectories)
-
-                # # limit list max num
-                # if len(sorted_dir_list) > ARCHIVE_MAX_NUM:
-                #     added = ARCHIVE_MAX_NUM - 56
-
-                #     combined_list = sorted_dir_list[:56] + sorted_dir_list[-added:]
-                #     sorted_dir_list = combined_list
-                #     print(combined_list)
-
-                # # print(subdirectories)
-                # # print(sorted_dir_list)
-                # # output_string = input_string.replace('_', ' ')
-                # no_underbar_list = [name.replace('_', ' ') for name in sorted_dir_list]
-                # send_osc_message(OSC_ADDR, OSC_PORT, "/folder_names", no_underbar_list)
-
                 timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
                 send_osc_message(OSC_ADDR, OSC_PORT, "/record_start", timestamp)
                 send_osc_message(OSC_ADDR_2, OSC_PORT_2, "/record_start", timestamp)
@@ -806,11 +780,9 @@ async def loop():
                         send_osc_message(OSC_ADDR_2, OSC_PORT_2, "/record_interrupt", timestamp)
                         send_osc_message(OSC_ADDR_LOCAL, OSC_PORT, "/record_interrupt", timestamp)
 
-
                         err_start_time = time.time()
 
                     else:
-
                         # 주어진 폴더 경로에서 하위 폴더들의 이름을 가져옴
                         wav_files = get_wav_files_in_folder(AUDIO_STORAGE_PATH)
                         # print(wav_files)
@@ -818,10 +790,11 @@ async def loop():
                         sorted_audio_list = sort_audio_files_by_datetime(wav_files)
                         # print(sorted_audio_list)
                         three_same = []
+                        # 맨 마지막 녹음된 오디오 파일의 이름만 담긴 리스트를 만들어 전달
                         three_same.append(sorted_audio_list[-1])
                         three_same.append(sorted_audio_list[-1])
                         three_same.append(sorted_audio_list[-1])
-                        print(three_same)
+                        # print(three_same)
                         
                         send_osc_message(OSC_ADDR_2, 30001, "/audio_files", three_same)
 
@@ -833,7 +806,7 @@ async def loop():
                             # return subdirectories
                         sorted_dir_list = sort_folders_by_datetime(subdirectories)
 
-                        # limit list max num
+                        # 아카이브에 표시될 리스트 개수 제한
                         if len(sorted_dir_list) > ARCHIVE_MAX_NUM:
                             added = ARCHIVE_MAX_NUM - 56
 
@@ -849,7 +822,7 @@ async def loop():
 
 
 
-
+                        # 입술 인식 결과 예측
                         predict_rslt = lipRead.predict(calc_frames)
                         # print(predict_rslt)
                         # predict_rslt = lipRead.translate(rslt)
@@ -922,15 +895,8 @@ async def loop():
                 # bottom
                 # frame = putTextKor(frame, text, pos=(text_left, text_top + 750), font_color=text_color, font_size=text_size_)
 
-                # text = 'Recording...'
-                # font = cv2.FONT_HERSHEY_SIMPLEX
-                # font_scale = VIEW_SCALE
-                # # print(f'font_scale: {font_scale}˙')
-                # text_position = (10, 25 * font_scale)
-                # text_color = (0, 0, 255)  # BGR format
-                # cv2.putText(frame, text, text_position, font, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
-                # rect for face
+                # 화면 중앙 사각형
                 # 중심 좌표와 크기
                 center = (frame.shape[1] // 2, frame.shape[0] // 2)  # 이미지 중심 좌표
 
@@ -1099,12 +1065,11 @@ asyncio.run(init_main())
 
 # 단축키
 '''
-영상모드 <-> 대기모드 : m
+영상모드 -> 대기모드 : m
+대기모드 -> 영상모드 : ESC
+안내모드 -> 대기/영상 모드 : ESC
 
 녹화 시작 : c
 
-
-
-종료 : esc
-
+종료 : ESC 
 '''
