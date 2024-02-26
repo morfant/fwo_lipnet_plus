@@ -8,7 +8,7 @@ Apple silicon M1
 
 ### 실행     
 pip install -r requirements.txt     
-python liveCam.py
+python liveCam.py   
    
 
    
